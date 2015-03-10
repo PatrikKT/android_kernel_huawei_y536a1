@@ -35,6 +35,9 @@
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
 
+#ifdef CONFIG_HUAWEI_LCD
+#include "mdss_dsi.h"
+#endif
 #include "splash.h"
 
 #define VSYNC_PERIOD 16
@@ -972,8 +975,11 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		return ret;
 	}
 
-	if (ctl->shared_lock)
+	if (ctl->shared_lock){
+		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_BEGIN);
+		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_READY);
 		mutex_lock(ctl->shared_lock);
+	}
 
 	mutex_lock(&mdp5_data->ov_lock);
 	mutex_lock(&mfd->lock);
@@ -996,8 +1002,9 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		if (0 == mdss_mdp_overlay_sd_ctrl(mfd, 0))
 			mdp5_data->sd_enabled = 0;
 	}
+	if (!ctl->shared_lock)
+		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_BEGIN);
 
-	mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_BEGIN);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 
 	if (data)
@@ -1233,7 +1240,11 @@ static int __mdss_mdp_overlay_release_all(struct msm_fb_data_type *mfd,
 	}
 	mutex_unlock(&mdp5_data->ov_lock);
 
+#ifdef CONFIG_HUAWEI_LCD
+	if (cnt && mfd->panel_power_on)
+#else
 	if (cnt)
+#endif
 		mfd->mdp.kickoff_fnc(mfd, NULL);
 
 	list_for_each_entry_safe(rot, tmp, &mdp5_data->rot_proc_list, list) {
@@ -2663,7 +2674,10 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		pr_debug("cleaning up pipes on fb%d\n", mfd->index);
 		mdss_mdp_overlay_kickoff(mfd, NULL);
 	}
-
+#ifdef CONFIG_HUAWEI_LCD
+	if (atomic_dec_return(&ov_active_panels) == 0)
+		mdss_mdp_rotator_release_all();
+#endif
 	rc = mdss_mdp_ctl_stop(mdp5_data->ctl);
 	if (rc == 0) {
 		__mdss_mdp_overlay_free_list_purge(mfd);
@@ -2675,10 +2689,10 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 			mdss_mdp_ctl_destroy(mdp5_data->ctl);
 			mdp5_data->ctl = NULL;
 		}
-
+#ifndef CONFIG_HUAWEI_LCD
 		if (atomic_dec_return(&ov_active_panels) == 0)
 			mdss_mdp_rotator_release_all();
-
+#endif
 		rc = pm_runtime_put(&mfd->pdev->dev);
 		if (rc)
 			pr_err("unable to suspend w/pm_runtime_put (%d)\n", rc);
@@ -2798,6 +2812,10 @@ static int mdss_mdp_overlay_splash_image(struct msm_fb_data_type *mfd,
 	int rc = 0;
 	struct fb_info *fbi = NULL;
 	int image_len = 0;
+#ifdef CONFIG_HUAWEI_LCD
+	struct mdss_panel_data *pdata = NULL;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+#endif
 
 	if (!mfd || !mfd->fbi || !mfd->fbi->screen_base || !pipe_ndx) {
 		pr_err("Invalid input parameter\n");
@@ -2835,8 +2853,18 @@ static int mdss_mdp_overlay_splash_image(struct msm_fb_data_type *mfd,
 		req.dst_rect.y =
 			(fbi->var.yres >> 1) - (SPLASH_IMAGE_HEIGHT >> 1);
 
-		memcpy(fbi->screen_base, splash_bgr888_image, image_len);
-		mdss_mdp_overlay_pan_display(mfd, &req, image_len, pipe_ndx);
+	#ifdef CONFIG_HUAWEI_LCD
+		pdata = dev_get_platdata(&(mfd->pdev->dev));
+		ctrl = container_of(pdata, 
+				struct mdss_dsi_ctrl_pdata, 
+				panel_data);	
+		if (ctrl->operator_logo) {
+	#endif
+			memcpy(fbi->screen_base, splash_bgr888_image, image_len);
+			mdss_mdp_overlay_pan_display(mfd, &req, image_len, pipe_ndx);
+	#ifdef CONFIG_HUAWEI_LCD
+		}
+	#endif
 
 	} else if (splash_event == MDP_REMOVE_SPLASH_OV) {
 		if (pipe_ndx[0] != INVALID_PIPE_INDEX)

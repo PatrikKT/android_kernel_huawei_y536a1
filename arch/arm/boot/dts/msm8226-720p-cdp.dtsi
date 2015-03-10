@@ -10,7 +10,8 @@
  * GNU General Public License for more details.
  */
 
-/include/ "msm8226-camera-sensor-cdp.dtsi"
+/include/ "dsi-panel-nt35590-720p-video.dtsi"
+/* /include/ "msm8226-camera-sensor-cdp.dtsi" */
 
 &soc {
 	serial@f991f000 {
@@ -39,23 +40,26 @@
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
 
-		camera_focus {
-			label = "camera_focus";
-			gpios = <&msmgpio 108 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x210>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
+		/*we use gpio 107 and 108 for hall function,so we disable the following config*/
+		/*
+		*camera_focus {
+		*	label = "camera_focus";
+		*	gpios = <&msmgpio 108 0x1>;
+		*	linux,input-type = <1>;
+		*	linux,code = <0x210>;
+		*	gpio-key,wakeup;
+		*	debounce-interval = <15>;
+		*};
 
-		camera_snapshot {
-			label = "camera_snapshot";
-			gpios = <&msmgpio 107 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x2fe>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
+		*camera_snapshot {
+		*	label = "camera_snapshot";
+		*	gpios = <&msmgpio 107 0x1>;
+		*	linux,input-type = <1>;
+		*	linux,code = <0x2fe>;
+		*	gpio-key,wakeup;
+		*	debounce-interval = <15>;
+		*};
+		*/
 
 		vol_up {
 			label = "volume_up";
@@ -63,7 +67,7 @@
 			linux,input-type = <1>;
 			linux,code = <115>;
 			gpio-key,wakeup;
-			debounce-interval = <15>;
+			debounce-interval = <20>;
 		};
 	};
 
@@ -153,6 +157,7 @@
 
 &sdhc_1 {
 	vdd-supply = <&pm8226_l17>;
+	qcom,vdd-always-on;
 	qcom,vdd-voltage-level = <2950000 2950000>;
 	qcom,vdd-current-level = <800 500000>;
 
@@ -163,11 +168,12 @@
 
 	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
 	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
+	qcom,pad-drv-on = <0x3 0x3 0x2>; /* clk-8mA, cmd-8mA, data-6mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 
-	qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
-	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+        /*it needs to set clock frequency to 100Mhz for DDR50 mode.*/
+	qcom,clk-rates = <400000 25000000 50000000 100000000>;
+	qcom,bus-speed-mode = "DDR_1p8v";
 	qcom,nonremovable;
 
 	status = "ok";
@@ -210,11 +216,13 @@
 
 &sdhc_2 {
 	vdd-supply = <&pm8226_l18>;
+	qcom,vdd-always-on;
 	qcom,vdd-voltage-level = <2950000 2950000>;
 	qcom,vdd-current-level = <9000 800000>;
 
 	vdd-io-supply = <&pm8226_l21>;
-	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <2950000 2950000>;
 	qcom,vdd-io-current-level = <6 22000>;
 
 	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
@@ -222,7 +230,7 @@
 	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 
-	qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
+	qcom,clk-rates = <400000 25000000 50000000>;
 
 	#address-cells = <0>;
 	interrupt-parent = <&sdhc_2>;
@@ -250,6 +258,7 @@
 
 &spmi_bus {
 	qcom,pm8226@0 {
+		/*
 		qcom,leds@a100 {
 			status = "okay";
 			qcom,led_mpp_2 {
@@ -317,11 +326,12 @@
 				qcom,use-blink;
 			};
 		};
+		*/
 	};
 
 	qcom,pm8226@1 {
 		qcom,leds@d800 {
-			status = "okay";
+			status = "disable";
 			qcom,wled_0 {
 				label = "wled";
 				linux,name = "wled:backlight";
@@ -427,6 +437,7 @@
 	};
 };
 
+/*
 &pm8226_chg {
 	qcom,charging-disabled;
 	qcom,use-default-batt-values;
@@ -435,6 +446,7 @@
 		status = "disabled";
 	};
 };
+*/
 
 &pm8226_vadc {
 	chan@14 {

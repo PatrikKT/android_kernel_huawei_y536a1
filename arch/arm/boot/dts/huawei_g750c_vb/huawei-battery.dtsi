@@ -1,0 +1,31 @@
+/ {
+        g750c_batterydata: qcom,battery-data {
+               qcom,rpull-up-kohm = <68>;
+               qcom,vref-batt-therm = <1800000>;
+                /include/ "huawei-batterydata-g750c-HB476387RBC_UCD-4v35-3000mah.dtsi"
+                /include/ "huawei-batterydata-g750c-HB476387RBC_SID-4v35-3000mah.dtsi"
+                /include/ "huawei-batterydata-g750c-HB476387RBC_LLD-4v35-3000mah.dtsi"
+        };
+};
+
+&pm8226_bms {
+	qcom,battery-data = <&g750c_batterydata>;
+	qcom,low-voltage-threshold = <3250000>;
+};
+
+&pm8226_chg {
+	status = "okay";
+	qcom,vddmax-mv = <4350>;
+	qcom,vddsafe-mv = <4380>;
+	qcom,tchg-mins = <360>;
+	qcom,battery-data = <&g750c_batterydata>;
+};
+&pm8226_vadc {
+	pa_mpp_number = <20>;
+	cpu_mpp_number = <20>;
+};
+&pm8226_vadc {
+	chan@14 {
+		qcom,scale-function = <0x8>;
+	};
+};

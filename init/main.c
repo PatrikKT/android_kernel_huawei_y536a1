@@ -79,6 +79,11 @@
 #include <asm/smp.h>
 #endif
 
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+#include <linux/huawei_boot_log.h>
+#include <linux/kallsyms.h>
+#endif
+
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -463,6 +468,34 @@ static void __init mm_init(void)
 	pgtable_cache_init();
 	vmalloc_init();
 }
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+void  huawei_save_nff_kernel_init(void)
+{
+    struct boot_log_struct *boot_log = NULL;
+    /* get the previous saved phys address  and convert to cirt address*/
+    void * boot_log_virt =  ioremap_nocache(HUAWEI_BOOT_LOG_ADDR,HUAWEI_BOOT_LOG_SIZE);
+
+    boot_log = (struct boot_log_struct *)((unsigned int)boot_log_virt + MAGIC_NUMBER_SIZE);
+
+	if(NULL != boot_log) {
+		/* save log address and size */
+#ifdef CONFIG_KALLSYMS
+		boot_log->kernel_addr = virt_to_phys((void *)kallsyms_lookup_name("__log_buf"));
+#else
+		boot_log->kernel_addr = 0;
+#endif
+#ifdef CONFIG_LOG_BUF_SHIFT
+		boot_log->kernel_log_size = (1 << CONFIG_LOG_BUF_SHIFT);
+#else
+		boot_log->kernel_log_size = 0;
+#endif
+		boot_log->boot_process_mask = boot_log->boot_process_mask | LOGCAT_MAIN_MASK;
+		boot_log->boot_process_mask = boot_log->boot_process_mask | LOGCAT_SYSTEM_MASK;
+             iounmap((void*)boot_log_virt);
+	}   
+    return;
+}
+#endif
 
 asmlinkage void __init start_kernel(void)
 {
@@ -523,7 +556,9 @@ asmlinkage void __init start_kernel(void)
 	sort_main_extable();
 	trap_init();
 	mm_init();
-
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+    huawei_save_nff_kernel_init();
+#endif
 	/*
 	 * Set up the scheduler prior starting any interrupts (such as the
 	 * timer interrupt). Full topology setup happens at smp_init()
@@ -656,6 +691,14 @@ core_param(initcall_debug, initcall_debug, bool, 0644);
 
 static char msgbuf[64];
 
+#ifdef CONFIG_HW_PANIC_ON_DELAY_AT_INIT_N_REBOOT
+#define MAX_INIT_DELAY 6000
+void do_one_initcall_timercb(unsigned long data){
+	printk(KERN_ERR "init call timedout: %pF\n", (initcall_t) data);
+	panic("unexpectedly long time for init");
+}
+#endif
+
 static int __init_or_module do_one_initcall_debug(initcall_t fn)
 {
 	ktime_t calltime, delta, rettime;
@@ -679,6 +722,16 @@ int __init_or_module do_one_initcall(initcall_t fn)
 	int count = preempt_count();
 	int ret;
 
+#ifdef CONFIG_HW_PANIC_ON_DELAY_AT_INIT_N_REBOOT
+	int timer_rc = 0;
+	struct timer_list timer;
+
+	setup_timer(&timer, do_one_initcall_timercb, (unsigned long)fn);
+	timer_rc = mod_timer(&timer, jiffies + msecs_to_jiffies(MAX_INIT_DELAY));
+	if (timer_rc)
+		printk(KERN_ERR "Error adding initcall timer:%d\n", timer_rc);
+#endif
+
 	if (initcall_debug)
 		ret = do_one_initcall_debug(fn);
 	else
@@ -700,6 +753,11 @@ int __init_or_module do_one_initcall(initcall_t fn)
 	if (msgbuf[0]) {
 		printk("initcall %pF returned with %s\n", fn, msgbuf);
 	}
+
+#ifdef CONFIG_HW_PANIC_ON_DELAY_AT_INIT_N_REBOOT
+	if (timer_rc == 0) 
+		del_timer(&timer);
+#endif
 
 	return ret;
 }

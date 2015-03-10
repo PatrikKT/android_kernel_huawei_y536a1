@@ -1,0 +1,25 @@
+/ {
+        qrd_batterydata: qcom,battery-data {
+               qcom,rpull-up-kohm = <68>;
+               qcom,vref-batt-therm = <1800000>;
+               /include/ "HB444199EBC_ATL_SWD-4v35-2300mah.dtsi"
+               /include/ "HB444199EBC_LG_SCUD-4v35-2300mah.dtsi"
+               /include/ "HB444199EBC_LS_LS-4v35-2300mah.dtsi"
+        };
+};
+
+&pm8226_bms {
+	qcom,battery-data = <&qrd_batterydata>;
+	qcom,low-voltage-threshold = <3250000>;
+};
+
+&pm8226_chg {
+	status = "okay";
+	qcom,vddmax-mv = <4350>;
+	qcom,vddsafe-mv = <4380>;
+	qcom,tchg-mins = <512>;
+	qcom,battery-data = <&qrd_batterydata>;
+	qcom,batt-hot-percentage = <25>;
+	qcom,batt-cold-percentage = <80>;
+};
+/*remove redundant node*/

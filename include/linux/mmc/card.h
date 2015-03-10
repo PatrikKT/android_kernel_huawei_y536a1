@@ -15,6 +15,13 @@
 #include <linux/mod_devicetable.h>
 #include <linux/notifier.h>
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#define EMMC_SANDISK_MANFID 0x45
+#define EMMC_HYNIX_MANFID 0x90
+#define EMMC_SAMSUNG_MANFID 0x15
+#define EMMC_TOSHIBA_MANFID 0x11
+#endif
+
 struct mmc_cid {
 	unsigned int		manfid;
 	char			prod_name[8];
@@ -354,6 +361,9 @@ struct mmc_card {
 #define MMC_QUIRK_BROKEN_HPI (1 << 11)
  /* Skip data-timeout advertised by card */
 #define MMC_QUIRK_BROKEN_DATA_TIMEOUT	(1<<12)
+#ifdef CONFIG_HUAWEI_KERNEL 
+#define MMC_QUIRK_SAMSUNG_SMART (1<<10)          /* Samsung SMART is available */ 
+#endif
 
 #define MMC_QUIRK_CACHE_DISABLE (1 << 14)       /* prevent cache enable */
 
@@ -654,4 +664,7 @@ extern struct mmc_wr_pack_stats *mmc_blk_get_packed_statistics(
 extern void mmc_blk_init_packed_statistics(struct mmc_card *card);
 extern void mmc_blk_disable_wr_packing(struct mmc_queue *mq);
 extern int mmc_send_long_pon(struct mmc_card *card);
+#ifdef CONFIG_HUAWEI_KERNEL 
+extern ssize_t mmc_samsung_smart_handle(struct mmc_card *card, char *buf); 
+#endif
 #endif /* LINUX_MMC_CARD_H */

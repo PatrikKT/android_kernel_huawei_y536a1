@@ -3157,7 +3157,11 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk",   gcc_mss_cfg_ahb_clk.c, "fc880000.qcom,mss"),
 	CLK_LOOKUP("mem_clk",    gcc_boot_rom_ahb_clk.c, "fc880000.qcom,mss"),
 	/* NFC */
+#ifdef CONFIG_HUAWEI_KERNEL
+	CLK_LOOKUP("nfc_bbclk2",         cxo_d1_a_pin.c, "2-0077"),
+#else
 	CLK_LOOKUP("ref_clk",            cxo_d1_a_pin.c, "2-000e"),
+#endif
 	/* PIL-PRONTO */
 	CLK_LOOKUP("xo", cxo_pil_pronto_clk.c, "fb21b000.qcom,pronto"),
 
@@ -3436,6 +3440,27 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "18.qcom,eeprom"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6b.qcom,eeprom"),
 	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "6b.qcom,eeprom"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "60.qcom,eeprom"),
+	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "60.qcom,eeprom"),
+
+#ifdef CONFIG_HUAWEI_KERNEL_CAMERA
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "20.qcom,camera"),
+	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "20.qcom,camera"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "30.qcom,camera"),
+	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "30.qcom,camera"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "40.qcom,camera"),
+	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "40.qcom,camera"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "24.qcom,camera"),
+	CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "24.qcom,camera"),
+    CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6b.qcom,camera"),
+    CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "6b.qcom,camera"),
+    CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "7a.qcom,camera"),
+    CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "7a.qcom,camera"),
+    CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6e.qcom,camera"),
+    CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "6e.qcom,camera"),
+    CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "7e.qcom,camera"),
+    CLK_LOOKUP("cam_clk", camss_mclk0_clk.c, "7e.qcom,camera"),
+#endif
 
 	/* CCI clocks */
 	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,

@@ -411,6 +411,10 @@ show_one(cpuinfo_max_freq, cpuinfo.max_freq);
 show_one(cpuinfo_transition_latency, cpuinfo.transition_latency);
 show_one(scaling_min_freq, min);
 show_one(scaling_max_freq, max);
+#ifdef CONFIG_HUAWEI_KERNEL
+show_one(scaling_smart_min_freq, smart_min);
+show_one(scaling_smart_max_freq, smart_max);
+#endif
 show_one(scaling_cur_freq, cur);
 show_one(cpu_utilization, util);
 
@@ -445,8 +449,126 @@ static ssize_t store_##file_name					\
 	return ret ? ret : count;					\
 }
 
+#ifndef CONFIG_HUAWEI_KERNEL
 store_one(scaling_min_freq, min);
 store_one(scaling_max_freq, max);
+#else
+static ssize_t store_scaling_min_freq(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	struct cpufreq_policy new_policy;
+
+	ret = cpufreq_get_policy(&new_policy, policy->cpu);
+	if (ret)
+		return -EINVAL;
+
+	ret = sscanf(buf, "%u", &new_policy.qcom_min);
+	if (ret != 1)
+		return -EINVAL;
+
+	policy->qcom_min = new_policy.qcom_min;
+	new_policy.min = new_policy.qcom_min > policy->smart_min ? new_policy.qcom_min : policy->smart_min;
+
+	pr_info("%s:min = %d, smart_min = %d, qcom_min = %d\n",
+		__func__, new_policy.min, policy->smart_min, new_policy.qcom_min);
+
+	ret = cpufreq_driver->verify(&new_policy);
+	if (ret)
+		pr_err("cpufreq: Frequency verification failed\n");
+
+	policy->user_policy.min = new_policy.min;
+	ret = __cpufreq_set_policy(policy, &new_policy);
+
+	return ret ? ret : count;
+}
+
+static ssize_t store_scaling_smart_min_freq(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	struct cpufreq_policy new_policy;
+
+	ret = cpufreq_get_policy(&new_policy, policy->cpu);
+	if (ret)
+		return -EINVAL;
+
+	ret = sscanf(buf, "%u", &new_policy.smart_min);
+	if (ret != 1)
+		return -EINVAL;
+
+	policy->smart_min = new_policy.smart_min;
+	new_policy.min = policy->qcom_min > new_policy.smart_min ? policy->qcom_min : new_policy.smart_min;
+
+	pr_info("%s:min = %d, smart_min = %d, qcom_min = %d\n",
+		__func__, new_policy.min, new_policy.smart_min, policy->qcom_min);
+
+	ret = cpufreq_driver->verify(&new_policy);
+	if (ret)
+		pr_err("cpufreq: Frequency verification failed\n");
+
+	policy->user_policy.min = new_policy.min;
+	ret = __cpufreq_set_policy(policy, &new_policy);
+
+	return ret ? ret : count;
+}
+
+static ssize_t store_scaling_max_freq(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	struct cpufreq_policy new_policy;
+
+	ret = cpufreq_get_policy(&new_policy, policy->cpu);
+	if (ret)
+		return -EINVAL;
+
+	ret = sscanf(buf, "%u", &new_policy.qcom_max);
+	if (ret != 1)
+		return -EINVAL;
+
+	policy->qcom_max = new_policy.qcom_max;
+	new_policy.max = new_policy.qcom_max < policy->smart_max ? new_policy.qcom_max : policy->smart_max;
+
+	pr_info("%s:max = %d, smart_max = %d, qcom_max = %d\n",
+		__func__, new_policy.max, policy->smart_max, new_policy.qcom_max);
+
+	ret = cpufreq_driver->verify(&new_policy);
+	if (ret)
+		pr_err("cpufreq: Frequency verification failed\n");
+
+	policy->user_policy.max = new_policy.max;
+	ret = __cpufreq_set_policy(policy, &new_policy);
+
+	return ret ? ret : count;
+}
+
+static ssize_t store_scaling_smart_max_freq(struct cpufreq_policy *policy, const char *buf, size_t count)
+{
+	unsigned int ret = -EINVAL;
+	struct cpufreq_policy new_policy;
+
+	ret = cpufreq_get_policy(&new_policy, policy->cpu);
+	if (ret)
+		return -EINVAL;
+
+	ret = sscanf(buf, "%u", &new_policy.smart_max);
+	if (ret != 1)
+		return -EINVAL;
+
+	policy->smart_max = new_policy.smart_max;
+	new_policy.max = policy->qcom_max < new_policy.smart_max ? policy->qcom_max : new_policy.smart_max;
+
+	pr_info("%s:max = %d, smart_max = %d, qcom_max = %d\n",
+		__func__, new_policy.max, new_policy.smart_max, policy->qcom_max);
+
+	ret = cpufreq_driver->verify(&new_policy);
+	if (ret)
+		pr_err("cpufreq: Frequency verification failed\n");
+
+	policy->user_policy.max = new_policy.max;
+	ret = __cpufreq_set_policy(policy, &new_policy);
+
+	return ret ? ret : count;
+}
+#endif
 
 /**
  * show_cpuinfo_cur_freq - current CPU frequency as detected by hardware
@@ -638,6 +760,10 @@ cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
+#ifdef CONFIG_HUAWEI_KERNEL
+cpufreq_freq_attr_rw(scaling_smart_min_freq);
+cpufreq_freq_attr_rw(scaling_smart_max_freq);
+#endif
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -652,6 +778,10 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
+#ifdef CONFIG_HUAWEI_KERNEL
+	&scaling_smart_min_freq.attr,
+	&scaling_smart_max_freq.attr,
+#endif
 	NULL
 };
 

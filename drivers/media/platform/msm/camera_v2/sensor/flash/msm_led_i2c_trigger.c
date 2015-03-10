@@ -22,6 +22,14 @@
 #include <linux/debugfs.h>
 
 #define FLASH_NAME "camera-led-flash"
+#define FLASH_FLAG_REGISTER 0x0B
+
+/* support I2C test */
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+#include <linux/hw_dev_dec.h>
+#endif
+#define FLASH_CHIP_ID_MASK 0x07
+#define FLASH_CHIP_ID 0x0
 
 /*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
@@ -29,6 +37,12 @@
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
 #else
 #define CDBG(fmt, args...) do { } while (0)
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#define TEMPERATUE_NORMAL 1  //normal
+#define TEMPERATUE_ABNORMAL 0 //abnormal
+static bool led_temperature = TEMPERATUE_NORMAL; //led temperature status
 #endif
 
 int32_t msm_led_i2c_trigger_get_subdev_id(struct msm_led_flash_ctrl_t *fctrl,
@@ -56,6 +70,15 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		pr_err("failed\n");
 		return -EINVAL;
 	}
+#ifdef CONFIG_HUAWEI_KERNEL
+	//if led status is off and led status abnormal close the led
+	if((TEMPERATUE_ABNORMAL == led_temperature) && (MSM_CAMERA_LED_TORCH_POWER_NORMAL != cfg->cfgtype))
+	{
+		cfg->cfgtype = MSM_CAMERA_LED_OFF;
+		pr_err("flash can not work.\n");
+	}
+#endif
+
 	switch (cfg->cfgtype) {
 
 	case MSM_CAMERA_LED_INIT:
@@ -83,6 +106,31 @@ int32_t msm_led_i2c_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		if (fctrl->func_tbl->flash_led_high)
 			rc = fctrl->func_tbl->flash_led_high(fctrl);
 		break;
+#ifdef CONFIG_HUAWEI_KERNEL
+	//normal
+	case MSM_CAMERA_LED_TORCH_POWER_NORMAL:
+		pr_err("resume the flash.\n");
+		led_temperature = TEMPERATUE_NORMAL;
+		break;
+	//abnormal
+	case MSM_CAMERA_LED_TORCH_POWER_LOW:
+		//need run MSM_CAMERA_LED_OFF to take off the led
+		pr_err("tunn off the flash.\n");
+		led_temperature = TEMPERATUE_ABNORMAL;
+		//close flash
+		if (fctrl->func_tbl->flash_led_off)
+		{
+			rc = fctrl->func_tbl->flash_led_off(fctrl);
+		}
+#endif
+	case MSM_CAMERA_LED_TORCH_LOW:
+	case MSM_CAMERA_LED_TORCH_MEDIUM:
+		if (fctrl->func_tbl->torch_led_on){
+			msleep(100);    //have to sleep to solve the flash problem of torch app
+			rc = fctrl->func_tbl->torch_led_on(fctrl);
+		}
+		break;
+	
 	default:
 		rc = -EFAULT;
 		break;
@@ -146,6 +194,14 @@ int msm_flash_led_release(struct msm_led_flash_ctrl_t *fctrl)
 	gpio_set_value_cansleep(
 		flashdata->gpio_conf->gpio_num_info->gpio_num[1],
 		GPIO_OUT_LOW);
+	/*close flash */
+      	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
+		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
+			fctrl->flash_i2c_client,
+			fctrl->reg_setting->release_setting);
+		if (rc < 0)
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+	}
 	rc = msm_camera_request_gpio_table(
 		flashdata->gpio_conf->cam_gpio_req_tbl,
 		flashdata->gpio_conf->cam_gpio_req_tbl_size, 0);
@@ -233,7 +289,72 @@ int msm_flash_led_high(struct msm_led_flash_ctrl_t *fctrl)
 
 	return rc;
 }
+/****************************************************************************
+* FunctionName: msm_flash_clear_err_and_unlock;
+* Description : clear the error and unlock the IC ;
+* NOTE: this funtion must be called before register is read and write
+***************************************************************************/
+int msm_flash_clear_err_and_unlock(struct msm_led_flash_ctrl_t *fctrl){
 
+        int rc = 0;
+        uint16_t reg_value=0;
+
+        CDBG("%s entry\n", __func__);
+
+        if (!fctrl) {
+                pr_err("%s:%d fctrl NULL\n", __func__, __LINE__);
+                return -EINVAL;
+        }
+
+
+        if (fctrl->flash_i2c_client) {
+                rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_read(
+                        fctrl->flash_i2c_client,
+                        FLASH_FLAG_REGISTER,&reg_value, MSM_CAMERA_I2C_BYTE_DATA);
+                if (rc < 0){
+                        pr_err("clear err and unlock %s:%d failed\n", __func__, __LINE__);
+                }
+
+                CDBG("clear err and unlock success:%02x\n",reg_value);
+        }else{
+                pr_err("%s:%d flash_i2c_client NULL\n", __func__, __LINE__);
+                return -EINVAL;
+        }
+
+
+       return 0;
+
+}
+
+/*===========================================================================
+ * FUNCTION    msm_torch_led_on
+ *
+ * DESCRIPTION: used for torch and mmi application
+ *==========================================================================*/
+int msm_torch_led_on(struct msm_led_flash_ctrl_t *fctrl)
+{
+    int rc = 0;
+
+    if (!fctrl) {
+        pr_err("%s:%d fctrl NULL\n", __func__, __LINE__);
+        return -EINVAL;
+    }
+
+    gpio_direction_output(fctrl->flash_en, 1);
+
+    //clear the err and unlock IC, this function must be called before read and write register
+    msm_flash_clear_err_and_unlock(fctrl);
+
+    if (fctrl->flash_i2c_client && fctrl->reg_setting) {
+    rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
+            fctrl->flash_i2c_client,
+            fctrl->reg_setting->torch_setting);
+        if (rc < 0)
+            pr_err("%s:%d failed\n", __func__, __LINE__);
+    }
+
+    return rc;
+}
 static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
 	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
 	uint16_t gpio_array_size)
@@ -520,12 +641,20 @@ int msm_flash_i2c_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
 	int rc = 0;
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+      uint16_t tmp_data = 0;
+#endif
 	struct msm_led_flash_ctrl_t *fctrl = NULL;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *dentry;
 #endif
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("i2c_check_functionality failed\n");
+		goto probe_failure;
+	}
+    if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK))
+	{
+	    pr_err("i2c_check_functionality failed I2C_FUNC_SMBUS_I2C_BLOCK\n");
 		goto probe_failure;
 	}
 
@@ -557,9 +686,38 @@ int msm_flash_i2c_probe(struct i2c_client *client,
 		return rc;
 	}
 
+	fctrl->flash_i2c_client->client->addr = fctrl->flash_i2c_client->client->addr<<1;
 	if (!fctrl->flash_i2c_client->i2c_func_tbl)
 		fctrl->flash_i2c_client->i2c_func_tbl =
 			&msm_sensor_qup_func_tbl;
+
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+    /* read chip id */
+    //clear the err and unlock IC, this function must be called before read and write register
+    msm_flash_clear_err_and_unlock(fctrl);
+
+    rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_read(
+                fctrl->flash_i2c_client,0x00,&tmp_data, MSM_CAMERA_I2C_BYTE_DATA);
+    if(rc < 0)
+    {
+        pr_err("%s: FLASHCHIP READ I2C error!\n", __func__);
+        goto probe_failure;
+    }
+
+    if ( FLASH_CHIP_ID == (tmp_data & FLASH_CHIP_ID_MASK) )
+    {
+        pr_err("%s : Read chip id ok!Chip ID is %d.\n", __func__, tmp_data);
+        /* detect current device successful, set the flag as present */
+        set_hw_dev_flag(DEV_I2C_FLASH);
+        pr_err("%s : LM3642 probe succeed!\n", __func__);
+    }
+    else
+    {
+        pr_err("%s : read chip id error!Chip ID is %d.\n", __func__, tmp_data);
+        rc = -ENODEV;
+        goto probe_failure;
+    }
+#endif
 
 	rc = msm_led_i2c_flash_create_v4lsubdev(fctrl);
 #ifdef CONFIG_DEBUG_FS

@@ -1358,7 +1358,12 @@ static int qpnp_adc_tm_activate_trip_type(struct thermal_zone_device *thermal,
 	return rc;
 }
 
+/* add another parameter into the function for transmiting isr type */
+#ifdef CONFIG_HUAWEI_KERNEL
+static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip,bool high_thr_isr)
+#else
 static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip)
+#endif
 {
 	u8 status_low = 0, status_high = 0, qpnp_adc_tm_meas_en = 0;
 	u8 adc_tm_low_enable = 0, adc_tm_high_enable = 0;
@@ -1413,12 +1418,22 @@ static int qpnp_adc_tm_read_status(struct qpnp_adc_tm_chip *chip)
 		pr_err("adc-tm-tm read status high failed with %d\n", rc);
 		goto fail;
 	}
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(high_thr_isr)
+	{
+		adc_tm_high_enable = qpnp_adc_tm_meas_en & status_high;
+	}
+	else
+	{
+		adc_tm_low_enable = qpnp_adc_tm_meas_en & status_low;		
+	}
+#else
 	adc_tm_low_enable = qpnp_adc_tm_meas_en & status_low;
 	adc_tm_low_enable &= adc_tm_low_thr_set;
 	adc_tm_high_enable = qpnp_adc_tm_meas_en & status_high;
 	adc_tm_high_enable &= adc_tm_high_thr_set;
 
+#endif
 	if (adc_tm_high_enable) {
 		sensor_notify_num = adc_tm_high_enable;
 		while (i < chip->max_channels_available) {
@@ -1567,8 +1582,11 @@ static void qpnp_adc_tm_high_thr_work(struct work_struct *work)
 	struct qpnp_adc_tm_chip *chip = container_of(work,
 			struct qpnp_adc_tm_chip, trigger_high_thr_work);
 	int rc;
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	rc = qpnp_adc_tm_read_status(chip,true);
+#else
 	rc = qpnp_adc_tm_read_status(chip);
+#endif
 	if (rc < 0)
 		pr_err("adc-tm high thr work failed\n");
 
@@ -1591,8 +1609,11 @@ static void qpnp_adc_tm_low_thr_work(struct work_struct *work)
 	struct qpnp_adc_tm_chip *chip = container_of(work,
 			struct qpnp_adc_tm_chip, trigger_low_thr_work);
 	int rc;
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	rc = qpnp_adc_tm_read_status(chip,false);
+#else
 	rc = qpnp_adc_tm_read_status(chip);
+#endif
 	if (rc < 0)
 		pr_err("adc-tm low thr work failed\n");
 

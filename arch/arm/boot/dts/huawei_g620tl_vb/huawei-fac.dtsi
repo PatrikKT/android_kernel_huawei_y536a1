@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI G620-L75";
+                  fac,hardware_ver = "HL1G620LMT";
+                  fac,software_ver = "MSM8926_G620-L75_VB";
+                  status = "ok";
+        };
+};

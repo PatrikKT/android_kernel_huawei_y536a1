@@ -1642,6 +1642,16 @@ SYSCALL_DEFINE3(getsockname, int, fd, struct sockaddr __user *, usockaddr,
 	if (err)
 		goto out_put;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	/* There has been getsockname on msm socket, which leads to panic.
+	 * Application would fix the issue, however, having a check here*/
+	if ( (sock->ops == NULL)  || (sock->ops->getname == NULL) ){
+		printk("Invalid getsockname on socket %d %p\n", fd, sock);
+		err = -EBADF;
+		goto out_put;
+	}
+#endif
+
 	err = sock->ops->getname(sock, (struct sockaddr *)&address, &len, 0);
 	if (err)
 		goto out_put;

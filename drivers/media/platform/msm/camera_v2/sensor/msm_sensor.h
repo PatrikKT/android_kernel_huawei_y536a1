@@ -48,6 +48,10 @@ struct msm_sensor_fn_t {
 		(struct msm_sensor_ctrl_t *);
 	int (*sensor_power_up) (struct msm_sensor_ctrl_t *);
 	int32_t (*sensor_match_id)(struct msm_sensor_ctrl_t *s_ctrl);
+#ifdef CONFIG_HUAWEI_KERNEL_CAMERA
+	int (*sensor_match_module) (struct msm_sensor_ctrl_t *);
+	int (*sensor_write_otp) (struct msm_sensor_ctrl_t *);
+#endif
 };
 
 struct msm_sensor_ctrl_t {
@@ -56,6 +60,7 @@ struct msm_sensor_ctrl_t {
 	enum cci_i2c_master_t cci_i2c_master;
 	struct msm_camera_sensor_board_info *sensordata;
 	struct msm_sensor_power_setting_array power_setting_array;
+	struct msm_sensor_power_setting_array power_down_setting_array;
 	struct mutex *msm_sensor_mutex;
 
 	struct msm_camera_i2c_client *sensor_i2c_client;

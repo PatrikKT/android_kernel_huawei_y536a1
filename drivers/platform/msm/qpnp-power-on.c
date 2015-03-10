@@ -23,7 +23,10 @@
 #include <linux/input.h>
 #include <linux/log2.h>
 #include <linux/qpnp/power-on.h>
-
+#include <linux/time.h>
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/huawei_apanic.h>
+#endif
 /* Common PNP defines */
 #define QPNP_PON_REVISION2(base)		(base + 0x01)
 
@@ -37,6 +40,10 @@
 #define QPNP_PON_WARM_RESET_REASON1(base)	(base + 0xA)
 #define QPNP_PON_WARM_RESET_REASON2(base)	(base + 0xB)
 #define QPNP_POFF_REASON1(base)			(base + 0xC)
+#ifdef CONFIG_HUAWEI_KERNEL
+#define QPNP_PON_POFF_REASON1(base)	(base + 0xC)
+#define QPNP_PON_POFF_REASON2(base)	(base + 0xD)
+#endif
 #define QPNP_PON_KPDPWR_S1_TIMER(base)		(base + 0x40)
 #define QPNP_PON_KPDPWR_S2_TIMER(base)		(base + 0x41)
 #define QPNP_PON_KPDPWR_S2_CNTL(base)		(base + 0x42)
@@ -91,6 +98,16 @@
 #define QPNP_KEY_STATUS_DELAY			msecs_to_jiffies(250)
 #define QPNP_PON_REV_B				0x01
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#define PON_SPARE_REG				0X88C
+#define PON_SPARE_WRITE_MASK		1
+#define PON_SPARE_REG_EN			1
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+extern void hw_chg_usb_usbin_callbak(void);
+#endif
+struct timeval tv_pwr;
+struct tm tm_pwr;
 enum pon_type {
 	PON_KPDPWR,
 	PON_RESIN,
@@ -419,12 +436,36 @@ static irqreturn_t qpnp_kpdpwr_irq(int irq, void *_pon)
 	rc = qpnp_pon_input_dispatch(pon, PON_KPDPWR);
 	if (rc)
 		dev_err(&pon->spmi->dev, "Unable to send input event\n");
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	do_gettimeofday(&tv_pwr);
+	time_to_tm(tv_pwr.tv_sec, 0, &tm_pwr);
+	pr_info("Exit %s : [%ld-%d-%d]%d:%d:%d:%ld\n",__func__,tm_pwr.tm_year + 1900,tm_pwr.tm_mon+1,
+						tm_pwr.tm_mday,tm_pwr.tm_hour,tm_pwr.tm_min,tm_pwr.tm_sec,tv_pwr.tv_usec%1000);
+#endif
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_MSM_DLOAD_MODE
+#ifdef CONFIG_HUAWEI_KERNEL
+extern void clear_dload_mode(void);
+#endif
+#endif
+
 static irqreturn_t qpnp_kpdpwr_bark_irq(int irq, void *_pon)
 {
+#ifdef CONFIG_MSM_DLOAD_MODE
+#ifdef CONFIG_HUAWEI_KERNEL
+	/* clear dload mode to reduce false triggering dump*/
+	clear_dload_mode();
+#endif
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+    /*clear the hardware reset magic number reset */
+    clear_hw_reset();
+	/*print message to inform developer this is triggered by long press power key */
+	printk(KERN_ERR "long press power key have detected!\n");
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -443,19 +484,21 @@ static irqreturn_t qpnp_kpdpwr_resin_bark_irq(int irq, void *_pon)
 {
 	return IRQ_HANDLED;
 }
-
 static irqreturn_t qpnp_cblpwr_irq(int irq, void *_pon)
 {
+#ifndef CONFIG_HUAWEI_KERNEL
 	int rc;
 	struct qpnp_pon *pon = _pon;
 
 	rc = qpnp_pon_input_dispatch(pon, PON_CBLPWR);
 	if (rc)
 		dev_err(&pon->spmi->dev, "Unable to send input event\n");
-
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+	hw_chg_usb_usbin_callbak();
+#endif
 	return IRQ_HANDLED;
 }
-
 static void bark_work_func(struct work_struct *work)
 {
 	int rc;
@@ -710,6 +753,12 @@ qpnp_pon_request_irqs(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 							cfg->state_irq);
 			return rc;
 		}
+#ifdef CONFIG_HUAWEI_KERNEL
+		else
+		{
+			enable_irq_wake(cfg->state_irq);
+		}
+#endif
 		break;
 	case PON_KPDPWR_RESIN:
 		if (cfg->use_bark) {
@@ -1030,6 +1079,94 @@ free_input_dev:
 		input_free_device(pon->pon_input);
 	return rc;
 }
+#ifdef CONFIG_HUAWEI_KERNEL
+#define REASON_MAX		16
+
+static const char * const qpnp_pwr_off_reason[] = {
+	[0] = "Triggered by Software",
+	[1] = "Triggered by PS_HOLD",
+	[2] = "Triggered by PMIC Watchdog",
+	[3] = "Triggered by Keypad_Reset1",
+	[4] = "Triggered by Keypad_Reset2",
+	[5] = "Triggered by simultaneous KPDPWR_N + RESIN_N",
+	[6] = "Triggered by RESIN_N",
+	[7] = "Unknow",
+	[8] = "Unknow",
+	[9] = "Unknow",
+	[10] = "Unknow",
+	[11] = "Triggered by Charger (ENUM_TIMER, BOOT_DONE)",
+	[12] = "Triggered by AFP",
+	[13] = "Triggered by UVLO",
+	[14] = "Triggered by Overtemp",
+	[15] = "Triggered by stage3 reset",
+};
+
+static const char * const qpnp_pon_warm_reset_reason[] = {
+	[0] = "Triggered by Software",
+	[1] = "Triggered by PS_HOLD",
+	[2] = "Triggered by PMIC Watchdog",
+	[3] = "Triggered by Keypad_Reset1",
+	[4] = "Triggered by Keypad_Reset2",
+	[5] = "Triggered by simultaneous KPDPWR_N + RESIN_N",
+	[6] = "Triggered by RESIN_N",
+	[7] = "Triggered by KPDPWR_N",
+	[8] = "Unknow",
+	[9] = "Unknow",
+	[10] = "Unknow",
+	[11] = "Unknow",
+	[12] = "Triggered AFP",
+	[13] = "Unknow",
+	[14] = "Unknow",
+	[15] = "Unknow",
+};
+
+
+static void hw_pmic_power_info(void)
+{
+	u16 pwr_off_reason = 0; //0x80C,0x80D
+	u16 pon_warm_reset_reason = 0;  //0x80A,0x80B
+	//u16 pon_soft_reset_reason = 0;  //0x80E,0x80F	
+	struct qpnp_pon *pon = sys_reset_dev;
+	int rc;
+	int index;
+
+	if (!pon)
+		return ;
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				QPNP_PON_POFF_REASON1(pon->base), (u8 *)&pwr_off_reason, 2);
+	if (rc) {
+		pr_err("Unable to read POFF_RESASON reg\n");
+		return ;
+	}
+
+	index = ffs(pwr_off_reason);
+	if ((index > REASON_MAX) || (index < 0))
+		index = 0;
+
+	pr_info("Power-off reason: %s and reg : 0x%x\n",
+		 index ? qpnp_pwr_off_reason[index - 1] :
+		"Unknown", pwr_off_reason);
+
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				QPNP_PON_WARM_RESET_REASON1(pon->base), (u8 *)&pon_warm_reset_reason, 2);
+	if (rc) {
+		pr_err("Unable to read WARM_RESET_RESASON reg\n");
+		return ;
+	}
+
+	index = ffs(pon_warm_reset_reason);
+	if ((index > REASON_MAX) || (index < 0))
+		index = 0;
+
+	pr_info("Pon_warm_reset reason: %s and reg : 0x%x \n",
+		 index ? qpnp_pon_warm_reset_reason[index - 1] :
+		"Unknown", pon_warm_reset_reason);
+
+	return;
+}
+#endif
 
 static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 {
@@ -1120,6 +1257,10 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 				pon->spmi->sid,
 				qpnp_poff_reason[index]);
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	hw_pmic_power_info();
+#endif
+
 	rc = of_property_read_u32(pon->spmi->dev.of_node,
 				"qcom,pon-dbc-delay", &delay);
 	if (rc) {
@@ -1175,6 +1316,16 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 			"Unable to intialize PON configurations\n");
 		return rc;
 	}
+
+#ifdef CONFIG_HUAWEI_KERNEL
+	/*enable the pmic spare register*/
+	rc = qpnp_pon_masked_write(pon,PON_SPARE_REG,PON_SPARE_WRITE_MASK,PON_SPARE_REG_EN);
+	if (rc) {
+		dev_err(&spmi->dev,
+			"Unable to write PON spare reg\n");
+		return rc;
+	}
+#endif
 
 	return rc;
 }

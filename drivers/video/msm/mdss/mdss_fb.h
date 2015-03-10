@@ -227,6 +227,10 @@ struct msm_fb_data_type {
 
 	u32 dcm_state;
 	struct list_head proc_list;
+#ifdef CONFIG_HUAWEI_LCD
+	struct delayed_work bkl_work;
+	u32 frame_updated;
+#endif
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)

@@ -320,6 +320,13 @@ int tty_port_close_start(struct tty_port *port,
 {
 	unsigned long flags;
 
+	//just in case
+	if((NULL == port) || (NULL == tty) || (NULL == filp))
+	{
+		printk(KERN_WARNING
+		       "tty_port_close_start:prot is null.");
+		return 0;
+	}
 	spin_lock_irqsave(&port->lock, flags);
 	if (tty_hung_up_p(filp)) {
 		spin_unlock_irqrestore(&port->lock, flags);

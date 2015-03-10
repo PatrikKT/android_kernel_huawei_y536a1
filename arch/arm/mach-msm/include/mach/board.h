@@ -239,6 +239,9 @@ enum msm_camera_actuator_name {
 	MSM_ACTUATOR_MAIN_CAM_3,
 	MSM_ACTUATOR_MAIN_CAM_4,
 	MSM_ACTUATOR_MAIN_CAM_5,
+	MSM_ACTUATOR_MAIN_CAM_6,
+	MSM_ACTUATOR_MAIN_CAM_7,
+	MSM_ACTUATOR_MAIN_CAM_8,
 	MSM_ACTUATOR_WEB_CAM_0,
 	MSM_ACTUATOR_WEB_CAM_1,
 	MSM_ACTUATOR_WEB_CAM_2,
@@ -660,6 +663,9 @@ int msm_add_sdcc(unsigned int controller,
 		struct mmc_platform_data *plat);
 
 void msm_pm_register_irqs(void);
+#ifdef CONFIG_HUAWEI_MMC
+int __init hw_extern_sdcard_add_device(void);
+#endif
 struct msm_usb_host_platform_data;
 int msm_add_host(unsigned int host,
 		struct msm_usb_host_platform_data *plat);

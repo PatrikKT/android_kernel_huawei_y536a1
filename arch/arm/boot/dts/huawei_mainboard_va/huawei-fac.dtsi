@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "main_board_va";
+                  fac,hardware_ver = "xxxxxxx";
+		  fac,software_ver = "MSM8x26_mainboard_va";
+                  status = "ok";
+        };
+};

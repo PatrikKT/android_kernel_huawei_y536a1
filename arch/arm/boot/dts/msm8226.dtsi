@@ -25,12 +25,7 @@
 	};
 
 	memory {
-		secure_mem: secure_region {
-			linux,contiguous-region;
-			reg = <0 0x6D00000>;
-			label = "secure_mem";
-		};
-
+                /* remove the secure mem */
 		adsp_mem: adsp_region {
 			linux,contiguous-region;
 			reg = <0 0x2a00000>;
@@ -645,7 +640,7 @@
 		compatible = "qcom,msm-watchdog";
 		reg = <0xf9017000 0x1000>;
 		interrupts = <0 3 0>, <0 4 0>;
-		qcom,bark-time = <11000>;
+		qcom,bark-time = <13000>;
 		qcom,pet-time = <10000>;
 		qcom,ipi-ping;
 	};
@@ -1167,6 +1162,11 @@
 					0x0fa00000 0x500000>; /* Address and Size of Hole */
 	};
 
+	huawei,huawei-mem-hole {
+		compatible = "huawei,huawei-mem-hole";
+		huawei,memblock-remove-huawei = <0x12C00000 0x100000>;
+	};
+
 	tsens: tsens@fc4a8000 {
 		compatible = "qcom,msm-tsens";
 		reg = <0xfc4a8000 0x2000>,
@@ -1182,9 +1182,14 @@
 		compatible = "qcom,msm-thermal";
 		qcom,sensor-id = <0>;
 		qcom,poll-ms = <250>;
-		qcom,limit-temp = <60>;
+
+		/*Changed from 60 to 75, inorder to maximize the bootup speed under high temp conditions*/
+		qcom,limit-temp = <75>;
 		qcom,temp-hysteresis = <10>;
-		qcom,freq-step = <2>;
+		/*Changed from 2 to 1 as the lifetime of msm_thermal is limited only during boot. */
+		/* Once boot completed the thermald is used to profile cpu freqs under high temp conditions*/
+		qcom,freq-step = <1>;
+
 		qcom,freq-control-mask = <0xf>;
 		qcom,core-limit-temp = <80>;
 		qcom,core-temp-hysteresis = <10>;
@@ -1212,6 +1217,7 @@
 
 	spi_0: spi@f9923000 { /* BLSP1 QUP1 */
 		compatible = "qcom,spi-qup-v2";
+		status = "disable";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg-names = "spi_physical", "spi_bam_physical";

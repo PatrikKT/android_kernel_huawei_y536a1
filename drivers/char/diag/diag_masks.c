@@ -668,6 +668,13 @@ int diag_process_apps_masks(unsigned char *buf, int len)
 
 	/* Set log masks */
 	if (*buf == 0x73 && *(int *)(buf+4) == 3) {
+		#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+		if (driver->mixed_qmdlog_pid != current->tgid)
+		{
+			driver->mixed_qmdlog_flag = 0;
+			pr_err(">>>>>>>%s: mixed_qmdlog disabled<<<<<<<<<<<<< \n", __func__);
+		}
+		#endif
 		buf += 8;
 		diag_update_log_mask(*(int *)buf, buf+8, *(int *)(buf+4));
 		diag_update_userspace_clients(LOG_MASKS_TYPE);

@@ -1,0 +1,205 @@
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	mipi_nt35521_720p_video_boe {
+		compatible = "huawei,lcd_panel_id9";
+		label = "mipi_nt35521_720p_video_boe";
+		status = "disable";
+		qcom,dsi-ctrl-phandle = <&mdss_dsi0>;
+		qcom,bl-enable-gpio = <&msmgpio 22 0>;
+		qcom,enable-gpio = <&msmgpio 23 0>;
+		qcom,rst-gpio = <&msmgpio 25 0>;
+		qcom,mdss-pan-res = <720 1280>;
+		qcom,mdss-pan-bpp = <24>;
+		qcom,mdss-pan-dest = "display_1";
+		qcom,mdss-pan-porch-values = <70 5 54 15 3 10>;
+		qcom,mdss-pan-underflow-clr = <0xff>;
+		qcom,mdss-pan-bl-ctrl = "bl_ctrl_dcs";
+		qcom,mdss-pan-bl-levels = <1 255>;
+		qcom,mdss-pan-dsi-mode = <0>;
+		qcom,mdss-pan-dsi-h-pulse-mode = <1>;
+		qcom,mdss-pan-dsi-h-power-stop = <0 0 0>;
+		qcom,mdss-pan-dsi-bllp-power-stop = <1 1>;
+		qcom,mdss-pan-dsi-traffic-mode = <2>;
+		qcom,mdss-pan-dsi-dst-format = <3>;
+		qcom,mdss-pan-dsi-vc = <0>;
+		qcom,mdss-pan-dsi-rgb-swap = <0>;
+		qcom,mdss-pan-dsi-data-lanes = <1 1 1 1>; /* 4 lanes */
+		qcom,mdss-pan-dsi-dlane-swap = <0>;
+		qcom,mdss-pan-dsi-t-clk = <0x2d 0x20>;
+		qcom,mdss-pan-dsi-stream = <0>;
+		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
+		qcom,mdss-pan-dsi-dma-tr = <0x04>;
+		qcom,mdss-pan-dsi-frame-rate = <60>;
+		qcom,panel-phy-regulatorSettings = [07 09 03 00  /* Regualotor settings */
+						    20 00 01];
+		qcom,panel-phy-timingSettings = [61 1f 17 00 2f 2d
+						    1c 21 29 03 04 00];
+		qcom,panel-phy-strengthCtrl = [ff 06];
+		qcom,panel-phy-bistCtrl = [00 00 b1 ff           /* BIST Ctrl settings */
+					   00 00];
+		qcom,panel-phy-laneConfig = [00 00 00 00 00 00 00 01 97 /* lane0 config */
+					     00 00 00 00 05 00 00 01 97 /* lane1 config */
+					     00 00 00 00 0a 00 00 01 97 /* lane2 config */
+					     00 00 00 00 0f 00 00 01 97 /* lane3 config */
+					     00 c0 00 00 00 00 00 01 bb]; /* Clk ln config */
+		qcom,panel-on-cmds = [  29 01 00 00 00 00 05 FF AA 55 A5 80
+					29 01 00 00 00 00 03 6F 11 00
+					29 01 00 00 00 00 03 F7 20 00
+					29 01 00 00 00 00 02 6F 06
+					29 01 00 00 00 00 02 F7 A0
+					29 01 00 00 00 00 02 6F 19
+					29 01 00 00 00 00 02 F7 12
+					29 01 00 00 00 00 02 6F 02
+					29 01 00 00 00 00 02 F7 47
+					29 01 00 00 00 00 02 6F 17
+					29 01 00 00 00 00 02 F4 70
+					29 01 00 00 00 00 02 6F 01
+					29 01 00 00 00 00 02 F9 46
+					29 01 00 00 00 00 06 F0 55 AA 52 08 00
+					29 01 00 00 00 00 06 BD 01 A0 10 10 01
+					29 01 00 00 00 00 05 B8 01 02 0C 02
+					29 01 00 00 00 00 03 BB 11 11
+					29 01 00 00 00 00 03 BC 00 00
+					29 01 00 00 00 00 02 B6 04
+					29 01 00 00 00 00 02 C8 80
+					29 01 00 00 00 00 06 F0 55 AA 52 08 01
+					29 01 00 00 00 00 03 B0 09 09
+					29 01 00 00 00 00 03 B1 09 09
+					29 01 00 00 00 00 03 BC 80 00
+					29 01 00 00 00 00 03 BD 80 00
+					29 01 00 00 00 00 02 CA 00
+					29 01 00 00 00 00 02 C0 04
+					29 01 00 00 00 00 03 B5 03 03
+					29 01 00 00 00 00 03 B3 19 19
+					29 01 00 00 00 00 03 B4 19 19
+					29 01 00 00 00 00 03 B9 26 26
+					29 01 00 00 00 00 03 BA 24 24
+					29 01 00 00 00 00 06 F0 55 AA 52 08 02
+					29 01 00 00 00 00 02 EE 01
+					29 01 00 00 00 00 11 B0 00 20 00 31 00 4C 00 62 00 76 00 97 00 B2 00 DF
+					29 01 00 00 00 00 11 B1 01 05 01 41 01 73 01 C1 02 03 02 04 02 3D 02 7B
+					29 01 00 00 00 00 11 B2 02 A0 02 D4 02 F8 03 28 03 46 03 6E 03 87 03 B6
+					29 01 00 00 00 00 05 B3 03 F9 03 FF
+					29 01 00 00 00 00 02 C0 04
+					29 01 00 00 00 00 06 F0 55 AA 52 08 06
+					29 01 00 00 00 00 03 B0 10 12
+					29 01 00 00 00 00 03 B1 14 16
+					29 01 00 00 00 00 03 B2 00 02
+					29 01 00 00 00 00 03 B3 31 31
+					29 01 00 00 00 00 03 B4 31 34
+					29 01 00 00 00 00 03 B5 34 34
+					29 01 00 00 00 00 03 B6 34 31
+					29 01 00 00 00 00 03 B7 31 31
+					29 01 00 00 00 00 03 B8 31 31
+					29 01 00 00 00 00 03 B9 2D 2E
+					29 01 00 00 00 00 03 BA 2E 2D
+					29 01 00 00 00 00 03 BB 31 31
+					29 01 00 00 00 00 03 BC 31 31
+					29 01 00 00 00 00 03 BD 31 34
+					29 01 00 00 00 00 03 BE 34 34
+					29 01 00 00 00 00 03 BF 34 31
+					29 01 00 00 00 00 03 C0 31 31
+					29 01 00 00 00 00 03 C1 03 01
+					29 01 00 00 00 00 03 C2 17 15
+					29 01 00 00 00 00 03 C3 13 11
+					29 01 00 00 00 00 03 E5 31 31
+					29 01 00 00 00 00 03 C4 17 15
+					29 01 00 00 00 00 03 C5 13 11
+					29 01 00 00 00 00 03 C6 03 01
+					29 01 00 00 00 00 03 C7 31 31
+					29 01 00 00 00 00 03 C8 31 34
+					29 01 00 00 00 00 03 C9 34 34
+					29 01 00 00 00 00 03 CA 34 31
+					29 01 00 00 00 00 03 CB 31 31
+					29 01 00 00 00 00 03 CC 31 31
+					29 01 00 00 00 00 03 CD 2E 2D
+					29 01 00 00 00 00 03 CE 2D 2E
+					29 01 00 00 00 00 03 CF 31 31
+					29 01 00 00 00 00 03 D0 31 31
+					29 01 00 00 00 00 03 D1 31 34
+					29 01 00 00 00 00 03 D2 34 34
+					29 01 00 00 00 00 03 D3 34 31
+					29 01 00 00 00 00 03 D4 31 31
+					29 01 00 00 00 00 03 D5 00 02
+					29 01 00 00 00 00 03 D6 10 12
+					29 01 00 00 00 00 03 D7 14 16
+					29 01 00 00 00 00 03 E6 32 32
+					29 01 00 00 00 00 06 D8 00 00 00 00 00
+					29 01 00 00 00 00 06 D9 00 00 00 00 00
+					29 01 00 00 00 00 02 E7 00
+					29 01 00 00 00 00 06 F0 55 AA 52 08 05
+					29 01 00 00 00 00 02 ED 30
+					29 01 00 00 00 00 03 B0 17 06
+					29 01 00 00 00 00 02 B8 00
+					29 01 00 00 00 00 02 C0 0D
+					29 01 00 00 00 00 02 C1 0B
+					29 01 00 00 00 00 02 C2 23
+					29 01 00 00 00 00 02 C3 40
+					29 01 00 00 00 00 02 C4 84
+					29 01 00 00 00 00 02 C5 82
+					29 01 00 00 00 00 02 C6 82
+					29 01 00 00 00 00 02 C7 80
+					29 01 00 00 00 00 03 C8 0B 30
+					29 01 00 00 00 00 03 C9 05 10
+					29 01 00 00 00 00 03 CA 01 10
+					29 01 00 00 00 00 03 CB 01 10
+					29 01 00 00 00 00 06 D1 03 05 05 07 00
+					29 01 00 00 00 00 06 D2 03 05 09 03 00
+					29 01 00 00 00 00 06 D3 00 00 6A 07 10
+					29 01 00 00 00 00 06 D4 30 00 6A 07 10
+					29 01 00 00 00 00 06 F0 55 AA 52 08 03
+					29 01 00 00 00 00 03 B0 00 00
+					29 01 00 00 00 00 03 B1 00 00
+					29 01 00 00 00 00 06 B2 05 00 0A 00 00
+					29 01 00 00 00 00 06 B3 05 00 0A 00 00
+					29 01 00 00 00 00 06 B4 05 00 0A 00 00
+					29 01 00 00 00 00 06 B5 05 00 0A 00 00
+					29 01 00 00 00 00 06 B6 02 00 0A 00 00
+					29 01 00 00 00 00 06 B7 02 00 0A 00 00
+					29 01 00 00 00 00 06 B8 02 00 0A 00 00
+					29 01 00 00 00 00 06 B9 02 00 0A 00 00
+					29 01 00 00 00 00 06 BA 53 00 0A 00 00
+					29 01 00 00 00 00 06 BB 53 00 0A 00 00
+					29 01 00 00 00 00 06 BC 53 00 0A 00 00
+					29 01 00 00 00 00 06 BD 53 00 0A 00 00
+					29 01 00 00 00 00 02 C4 60
+					29 01 00 00 00 00 02 C5 40
+					29 01 00 00 00 00 02 C6 64
+					29 01 00 00 00 00 02 C7 44
+					29 01 00 00 00 00 02 6F 11
+					29 01 00 00 00 00 02 F3 01
+					29 01 00 00 00 00 06 F0 55 AA 52 08 00
+					29 01 00 00 00 00 03 D9 02 05
+					29 01 00 00 00 00 02 55 01
+					29 01 00 00 00 00 02 53 24
+					29 01 00 00 00 00 02 51 00
+					05 01 00 00 78 00 02 11 00
+					05 01 00 00 16 00 02 29 00];
+
+		qcom,on-cmds-dsi-state = "DSI_LP_MODE";
+		qcom,panel-off-cmds = [ 05 01 00 00 16 00 02 28 00
+					05 01 00 00 78 00 02 10 00];
+		qcom,off-cmds-dsi-state = "DSI_HS_MODE";
+
+		qcom,panel-cabc-ui-cmds = [13 01 00 00 00 00 02 55 01
+					   13 01 00 00 00 00 02 53 24];
+		qcom,cabc-ui-cmds-dsi-state = "DSI_LP_MODE";
+		qcom,panel-cabc-video-cmds = [13 01 00 00 00 00 02 55 03
+					      13 01 00 00 00 00 02 53 24];
+		qcom,cabc-video-cmds-dsi-state = "DSI_LP_MODE";
+		
+		huawei,mdss-panel-read-flag = <0>;
+		huawei,panel-read-register = [0A 00];
+	};
+};

@@ -32,6 +32,7 @@
 
 #define MSM_POST_EVT_TIMEOUT 5000
 #define MSM_POST_EVT_NOTIMEOUT 0xFFFFFFFF
+#define MAX_ACTUATOR_NUMBER 2
 
 struct msm_video_device {
 	struct video_device *vdev;
@@ -117,4 +118,5 @@ struct vb2_queue *msm_get_stream_vb2q(unsigned int session_id,
 	unsigned int stream_id);
 struct msm_stream *msm_get_stream_from_vb2q(struct vb2_queue *q);
 struct msm_session *msm_session_find(unsigned int session_id);
+void msm_sd_get_actdev(struct v4l2_subdev *subdev_act[]);
 #endif /*_MSM_H */

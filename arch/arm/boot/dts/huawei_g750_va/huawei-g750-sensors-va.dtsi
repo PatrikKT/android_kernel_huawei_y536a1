@@ -1,0 +1,13 @@
+ / {
+        huawei_sensor_info {
+                  compatible = "huawei,hw_sensor_info";
+                  status = "ok";
+        };
+        	
+        huawei_hall_sensor{
+		compatible = "huawei,hall-mrms501a";
+		qcom,hall-int-gpio = <&msmgpio 109 0>;
+        reg = <0x501a 0x0>;
+		status = "ok";
+	};
+};

@@ -495,4 +495,12 @@ config QPNP_BMS
 	  Say Y here to enable support for QPNP chip bms device.
 	  It registers a fuelgauge bms power supply to report
 	  State of Charge.
+
+config BATTERY_BQ27510
+	tristate "Power supply class support"
+	depends on I2C
+
+config CHARGER_BQ2419x
+	tristate "Power supply class support"
+	depends on I2C	  
 endif # POWER_SUPPLY

@@ -1,0 +1,123 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+qcom,qrd-4v35-2300mAh-scud-data {
+	qcom,fcc-mah = <2300>;
+	qcom,default-rbatt-mohm = <127>;
+	qcom,rbatt-capacitive-mohm = <0>;
+	qcom,flat-ocv-threshold-uv = <3800000>;
+	qcom,max-voltage-uv = <4350000>;
+	qcom,v-cutoff-uv = <3400000>;
+	qcom,chg-term-ua = <100000>;
+	qcom,batt-id-kohm = <470>;
+	qcom,batt-name = "HB444199EBC_LG_SCUD";
+
+	qcom,warm-bat-decidegc = <420>;
+	qcom,warm-bat-mv = <4250>;
+	qcom,ibatmax-warm-ma = <800>;
+
+	qcom,cool-bat-decidegc = <100>;
+	qcom,cool-bat-mv = <4350>;
+	qcom,ibatmax-cool-ma = <600>;
+
+	qcom,hot-bat-decidegc = <520>;
+	qcom,cold-bat-decidegc = <0>;
+
+	qcom,rbatt-sf-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-row-legend = <100 95 90 85 80>,
+				<75 70 65 60 55>,
+				<50 45 40 35 30>,
+				<25 20 16 13 11>,
+				<10 9 8 7 6>,
+				<5 4 3 2 1>,
+				<0>;
+		qcom,lut-data = <1303 300 100 80 74>,
+				<1300 300 100 80 74>,
+				<1232 304 103 82 75>,
+				<1210 311 107 86 77>,
+				<1223 322 112 89 79>,
+				<1231 337 118 92 81>,
+				<1251 333 125 96 85>,
+				<1277 319 135 102 88>,
+				<1303 317 132 105 90>,
+				<1335 322 111 95 85>,
+				<1374 333 105 85 77>,
+				<1422 349 108 87 79>,
+				<1477 374 113 91 82>,
+				<1544 410 118 94 85>,
+				<1622 459 125 92 82>,
+				<1708 513 128 91 77>,
+				<1803 559 128 92 79>,
+				<2044 587 128 92 78>,
+				<2152 619 129 91 77>,
+				<2440 659 136 96 81>,
+				<2623 681 141 98 81>,
+				<2837 710 148 100 82>,
+				<3096 740 153 103 83>,
+				<3413 777 159 104 83>,
+				<3840 813 159 102 82>,
+				<4360 847 159 103 85>,
+				<5119 891 168 110 92>,
+				<6177 960 191 125 101>,
+				<7856 1067 231 141 107>,
+				<12054 1659 280 171 120>,
+				<38365 5750 2845 1811 1890>;
+	};
+
+	qcom,fcc-temp-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-data = <2415 2449 2411 2404 2384>;
+	};
+
+	qcom,pc-temp-ocv-lut {
+		qcom,lut-col-legend = <(-20) 0 25 40 60>;
+		qcom,lut-row-legend = <100 95 90 85 80>,
+				<75 70 65 60 55>,
+				<50 45 40 35 30>,
+				<25 20 16 13 11>,
+				<10 9 8 7 6>,
+				<5 4 3 2 1>,
+				<0>;
+		qcom,lut-data = <4334 4346 4326 4326 4321>,
+				<4252 4275 4264 4262 4257>,
+				<4186 4215 4208 4205 4201>,
+				<4124 4158 4153 4151 4147>,
+				<4067 4105 4101 4099 4095>,
+				<3999 4053 4053 4051 4047>,
+				<3944 3992 4003 4004 4002>,
+				<3903 3939 3962 3964 3962>,
+				<3869 3897 3918 3923 3921>,
+				<3842 3863 3872 3876 3875>,
+				<3820 3834 3839 3840 3839>,
+				<3802 3811 3816 3817 3816>,
+				<3785 3793 3797 3798 3797>,
+				<3771 3780 3782 3781 3781>,
+				<3756 3767 3771 3765 3759>,
+				<3739 3753 3757 3748 3735>,
+				<3719 3732 3734 3726 3713>,
+				<3700 3711 3701 3693 3681>,
+				<3684 3697 3685 3677 3666>,
+				<3668 3690 3682 3675 3664>,
+				<3659 3686 3681 3674 3663>,
+				<3648 3681 3679 3672 3661>,
+				<3634 3676 3675 3669 3657>,
+				<3616 3667 3667 3661 3648>,
+				<3594 3653 3646 3640 3623>,
+				<3563 3625 3607 3600 3583>,
+				<3522 3580 3553 3548 3535>,
+				<3464 3517 3489 3487 3475>,
+				<3381 3428 3411 3406 3393>,
+				<3248 3296 3294 3275 3267>,
+				<3000 3000 3000 3000 3000>;
+	};
+};

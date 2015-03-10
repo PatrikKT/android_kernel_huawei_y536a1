@@ -25,6 +25,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/pm_runtime.h>
+#include <linux/suspend.h>
 #include <linux/of.h>
 #include <linux/dma-mapping.h>
 
@@ -118,6 +119,17 @@ static inline bool aca_enabled(void)
 #endif
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+extern int ci13xxx_udc_register_vbus_sn(void (*callback)(int));
+extern void ci13xxx_udc_unregister_vbus_sn(void (*callback)(int));
+extern int ci13xxx_udc_get_enum_count(void);
+extern void ci13xxx_udc_set_enum_count(int count);
+extern int is_otg_host_mode(void);
+extern int is_usb_chg_exist(void);
+#endif
+#ifdef CONFIG_CHARGER_BQ2419x
+extern void notify_vubs_plug_status(unsigned long event);
+#endif
 static int vdd_val[VDD_TYPE_MAX][VDD_VAL_MAX] = {
 		{  /* VDD_CX CORNER Voting */
 			[VDD_NONE]	= RPM_VREG_CORNER_NONE,
@@ -1338,6 +1350,9 @@ static int msm_otg_notify_chg_type(struct msm_otg *motg)
 
 	pr_debug("setting usb power supply type %d\n", charger_type);
 	power_supply_set_supply_type(psy, charger_type);
+	#ifdef CONFIG_CHARGER_BQ2419x
+	notify_vubs_plug_status(charger_type);
+	#endif
 	return 0;
 }
 
@@ -1354,6 +1369,7 @@ static int msm_otg_notify_power_supply(struct msm_otg *motg, unsigned mA)
 			goto psy_error;
 		if (power_supply_set_current_limit(psy, 1000*mA))
 			goto psy_error;
+	/* remove huawei code */
 	} else if (motg->cur_power > 0 && (mA == 0 || mA == 2)) {
 		/* Disable charging */
 		if (power_supply_set_online(psy, false))
@@ -1589,6 +1605,9 @@ static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 	 */
 	if (on) {
 		msm_otg_notify_host_mode(motg, on);
+		#ifdef CONFIG_CHARGER_BQ2419x
+		notify_vubs_plug_status(POWER_SUPPLY_TYPE_OTG);
+		#endif
 		ret = regulator_enable(vbus_otg);
 		if (ret) {
 			pr_err("unable to enable vbus_otg\n");
@@ -1601,6 +1620,9 @@ static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 			pr_err("unable to disable vbus_otg\n");
 			return;
 		}
+		#ifdef CONFIG_CHARGER_BQ2419x
+		notify_vubs_plug_status(POWER_SUPPLY_TYPE_UNKNOWN);
+		#endif
 		msm_otg_notify_host_mode(motg, on);
 		vbus_is_on = false;
 	}
@@ -2627,6 +2649,12 @@ static void msm_otg_sm_work(struct work_struct *w)
 					}
 					/* fall through */
 				case USB_PROPRIETARY_CHARGER:
+#ifdef CONFIG_HUAWEI_KERNEL
+					if(ci13xxx_udc_get_enum_count())
+					{
+						ci13xxx_udc_set_enum_count(0);
+					}
+#endif
 					msm_otg_notify_charger(motg,
 							IDEV_CHG_MAX);
 					pm_runtime_put_sync(otg->phy->dev);
@@ -3383,11 +3411,12 @@ static void msm_otg_set_vbus_state(int online)
 		pr_debug("PMIC: BSV interrupt ignored in MHL\n");
 		return;
 	}
-
-	if (atomic_read(&motg->pm_suspended))
+	if (atomic_read(&motg->pm_suspended)) {
 		motg->sm_work_pending = true;
-	else
+	} else if (!motg->sm_work_pending) {
+		/* process event only if previous one is not pending */
 		queue_work(system_nrt_wq, &motg->sm_work);
+	}
 }
 
 static void msm_pmic_id_status_w(struct work_struct *w)
@@ -3395,6 +3424,7 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 	struct msm_otg *motg = container_of(w, struct msm_otg,
 						pmic_id_status_work.work);
 	int work = 0;
+	dev_dbg(motg->phy.dev, "ID status_w\n");
 
 	if (msm_otg_read_pmic_id_state(motg)) {
 		if (!test_and_set_bit(ID, &motg->inputs)) {
@@ -3410,10 +3440,12 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 	}
 
 	if (work && (motg->phy.state != OTG_STATE_UNDEFINED)) {
-		if (atomic_read(&motg->pm_suspended))
+		if (atomic_read(&motg->pm_suspended)) {
 			motg->sm_work_pending = true;
-		else
+		} else if (!motg->sm_work_pending) {
+			/* process event only if previous one is not pending */
 			queue_work(system_nrt_wq, &motg->sm_work);
+		}
 	}
 
 }
@@ -3436,7 +3468,33 @@ static irqreturn_t msm_pmic_id_irq(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
+int msm_otg_pm_notify(struct notifier_block *notify_block,
+					unsigned long mode, void *unused)
+{
+	struct msm_otg *motg = container_of(
+		notify_block, struct msm_otg, pm_notify);
 
+	dev_dbg(motg->phy.dev, "OTG PM notify:%lx, sm_pending:%u\n", mode,
+					motg->sm_work_pending);
+
+	switch (mode) {
+	case PM_POST_SUSPEND:
+		/* OTG sm_work can be armed now */
+		atomic_set(&motg->pm_suspended, 0);
+
+		/* Handle any deferred wakeup events from USB during suspend */
+		if (motg->sm_work_pending) {
+			motg->sm_work_pending = false;
+			queue_work(system_nrt_wq, &motg->sm_work);
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
 static int msm_otg_mode_show(struct seq_file *s, void *unused)
 {
 	struct msm_otg *motg = s->private;
@@ -3704,6 +3762,12 @@ static int otg_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = motg->online;
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(is_otg_host_mode() == 0)
+		{
+			val->intval = is_usb_chg_exist();
+		}
+#endif
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = psy->type;
@@ -4698,6 +4762,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 
 	motg->usb_psy.name = "usb";
+	/* remove huawei code */
 	motg->usb_psy.type = POWER_SUPPLY_TYPE_USB;
 	motg->usb_psy.supplied_to = otg_pm_power_supplied_to;
 	motg->usb_psy.num_supplicants = ARRAY_SIZE(otg_pm_power_supplied_to);
@@ -4717,13 +4782,17 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		if (!msm_otg_register_power_supply(pdev, motg))
 			psy = &motg->usb_psy;
 	}
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	ci13xxx_udc_register_vbus_sn(&msm_otg_set_vbus_state);
+#endif
 	if (legacy_power_supply && pdata->otg_control == OTG_PMIC_CONTROL)
 		pm8921_charger_register_vbus_sn(&msm_otg_set_vbus_state);
 
 	ret = msm_otg_setup_ext_chg_cdev(motg);
 	if (ret)
 		dev_dbg(&pdev->dev, "fail to setup cdev\n");
+	motg->pm_notify.notifier_call = msm_otg_pm_notify;
+	register_pm_notifier(&motg->pm_notify);
 
 	return 0;
 
@@ -4786,6 +4855,7 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 
 	if (phy->otg->host || phy->otg->gadget)
 		return -EBUSY;
+	unregister_pm_notifier(&motg->pm_notify);
 
 	if (!motg->ext_chg_device) {
 		device_destroy(motg->ext_chg_class, motg->ext_chg_dev);
@@ -4798,6 +4868,9 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 		msm_otg_setup_devices(pdev, motg->pdata->mode, false);
 	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
 		pm8921_charger_unregister_vbus_sn(0);
+#ifdef CONFIG_HUAWEI_KERNEL
+	ci13xxx_udc_unregister_vbus_sn(0);
+#endif
 	msm_otg_mhl_register_callback(motg, NULL);
 	msm_otg_debugfs_cleanup();
 	cancel_delayed_work_sync(&motg->chg_work);
@@ -4955,7 +5028,8 @@ static int msm_otg_pm_resume(struct device *dev)
 	dev_dbg(dev, "OTG PM resume\n");
 
 	motg->pm_done = 0;
-	atomic_set(&motg->pm_suspended, 0);
+	if (!motg->host_bus_suspend)
+		atomic_set(&motg->pm_suspended, 0);
 	if (motg->async_int || motg->sm_work_pending) {
 		pm_runtime_get_noresume(dev);
 		ret = msm_otg_resume(motg);
@@ -4965,7 +5039,12 @@ static int msm_otg_pm_resume(struct device *dev)
 		pm_runtime_set_active(dev);
 		pm_runtime_enable(dev);
 
-		if (motg->sm_work_pending) {
+		/*
+		 * Defer any host mode disconnect events until
+		 * all devices are RESUMED
+		 *
+		 */
+		if (motg->sm_work_pending && !motg->host_bus_suspend) {
 			motg->sm_work_pending = false;
 			queue_work(system_nrt_wq, &motg->sm_work);
 		}

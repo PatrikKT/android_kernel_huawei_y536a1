@@ -1,0 +1,10 @@
+&soc {
+        huawei,huawei-detect-info {
+                compatible = "huawei-detect-info";
+                huawei,voltage-always-on;
+        };
+        huawei,huawei-gpio-info {
+                compatible = "huawei-gpio-info";
+                huawei,voltage-active-high;
+        };
+     };

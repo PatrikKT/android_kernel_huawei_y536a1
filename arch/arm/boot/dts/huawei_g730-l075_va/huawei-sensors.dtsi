@@ -1,0 +1,12 @@
+/*delete the hall dtsi config to avoid device breakup*/
+ /* add hall sensor configration */
+ / {
+        huawei_sensor_info {
+                  compatible = "huawei,hw_sensor_info";
+                  status = "ok";
+        };
+        adsp_sensor_info {
+                  compatible = "huawei,hw_adsp_info";
+                  product_name = "G730";
+        };
+};

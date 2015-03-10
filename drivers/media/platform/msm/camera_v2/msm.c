@@ -29,7 +29,7 @@
 #include "msm_vb2.h"
 #include "msm_sd.h"
 #include <media/msmb_generic_buf_mgr.h>
-
+#include <linux/jiffies.h>
 
 static struct v4l2_device *msm_v4l2_dev;
 static struct list_head    ordered_sd_list;
@@ -670,6 +670,8 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	struct msm_command *cmd;
 	int session_id, stream_id;
 	unsigned long flags = 0;
+	uint32_t start_time = 0;
+	uint32_t cost_time = 0;
 
 	session_id = event_data->session_id;
 	stream_id = event_data->stream_id;
@@ -715,18 +717,31 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 				__func__, __LINE__);
 		return rc;
 	}
-
-	/* should wait on session based condition */
-	rc = wait_for_completion_timeout(&cmd_ack->wait_complete,
+	start_time = jiffies;
+	do{
+		/* should wait on session based condition */
+		rc = wait_for_completion_timeout(&cmd_ack->wait_complete,
 			msecs_to_jiffies(timeout));
+		cost_time = (jiffies-start_time)*1000/HZ;
+
+		if(rc == -ERESTARTSYS)
+		{
+			pr_err("%s: rc == -ERESTARTSYS \n",__func__);
+			continue;
+		}
+		else
+		{
+			break;
+		}
+	}while(cost_time < timeout);
 
 	if (list_empty_careful(&cmd_ack->command_q.list)) {
 		if (!rc) {
 			pr_err("%s: Timed out\n", __func__);
 			rc = -ETIMEDOUT;
 		} else {
-			pr_err("%s: Error: No timeout but list empty!",
-					__func__);
+			pr_err("%s: Error: rc=%d  No timeout but list empty!",
+					__func__, rc);
 			mutex_unlock(&session->lock);
 			return -EINVAL;
 		}
@@ -922,6 +937,25 @@ static struct v4l2_subdev *msm_sd_find(const char *name)
 	spin_unlock_irqrestore(&msm_v4l2_dev->lock, flags);
 
 	return subdev_out;
+}
+
+/*func to get and return actuator subdevs we find*/
+void msm_sd_get_actdev(struct v4l2_subdev *subdev_act[])
+{
+	unsigned long flags;
+	struct v4l2_subdev *subdev = NULL;
+	int i=0;
+
+	spin_lock_irqsave(&msm_v4l2_dev->lock, flags);
+	if (!list_empty(&msm_v4l2_dev->subdevs)) {
+		list_for_each_entry(subdev, &msm_v4l2_dev->subdevs, list)
+			if (!strcmp("msm_actuator", subdev->name)) {
+				subdev_act[i++] = subdev;
+				if(MAX_ACTUATOR_NUMBER == i)
+					break;
+			}
+	}
+	spin_unlock_irqrestore(&msm_v4l2_dev->lock, flags);
 }
 
 static void msm_sd_notify(struct v4l2_subdev *sd,

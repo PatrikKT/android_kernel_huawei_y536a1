@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI G660-L075";
+                  fac,hardware_ver = "HL2G660M";
+		  fac,software_ver = "MSM8926_G660-L075_VB";
+                  status = "ok";
+        };
+};

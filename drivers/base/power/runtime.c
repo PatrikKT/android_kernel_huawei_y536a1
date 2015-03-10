@@ -13,6 +13,8 @@
 #include <trace/events/rpm.h>
 #include "power.h"
 
+#include <linux/cyttsp4_core.h>
+
 static int rpm_resume(struct device *dev, int rpmflags);
 static int rpm_suspend(struct device *dev, int rpmflags);
 
@@ -872,12 +874,26 @@ int __pm_runtime_idle(struct device *dev, int rpmflags)
 	unsigned long flags;
 	int retval;
 
+    /* add log for cyttsp tp for tracking who decrement the count */
+    if( (0 == strcmp( dev_name(dev), "cyttsp4_mt.main_ttsp_core" ))
+        &&( cyttsp_debug_mask >= TP_DBG) )
+    {
+        printk("[CYTTSP] %s, pm_time_count is %d \n", __func__, dev->power.usage_count.counter );
+        WARN_ON(1);
+    }
+
 	might_sleep_if(!(rpmflags & RPM_ASYNC) && !dev->power.irq_safe);
 
 	if (rpmflags & RPM_GET_PUT) {
 		if (!atomic_dec_and_test(&dev->power.usage_count))
 			return 0;
 	}
+
+    if( (0 == strcmp( dev_name(dev), "cyttsp4_mt.main_ttsp_core" ))
+        &&( cyttsp_debug_mask >= TP_DBG) )
+    {
+        printk("[CYTTSP] %s, pm_time_count is %d \n", __func__, dev->power.usage_count.counter );
+    }
 
 	spin_lock_irqsave(&dev->power.lock, flags);
 	retval = rpm_idle(dev, rpmflags);

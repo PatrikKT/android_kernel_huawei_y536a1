@@ -6,6 +6,7 @@
 
 wm97xx-ts-y := wm97xx-core.o
 
+obj-$(CONFIG_HUAWEI_KERNEL) += hw_tp_common.o
 obj-$(CONFIG_TOUCHSCREEN_88PM860X)	+= 88pm860x-ts.o
 obj-$(CONFIG_TOUCHSCREEN_AD7877)	+= ad7877.o
 obj-$(CONFIG_TOUCHSCREEN_AD7879)	+= ad7879.o
@@ -84,3 +85,63 @@ obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_I2C_RMI4)		+= synaptics_i2c_rmi4.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV)	+= synaptics_rmi_dev.o
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE) 	+= synaptics_fw_update.o
 obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx/
+#/*Add synaptics new driver "Synaptics DSX I2C V2.0"*/
+obj-$(CONFIG_TOUCHSCREEN_HUAWEI_DSX_I2C) += synaptics_dsx_i2c.o
+obj-$(CONFIG_TOUCHSCREEN_HUAWEI_DSX_RMI_DEV) += synaptics_dsx_rmi_dev.o
+obj-$(CONFIG_TOUCHSCREEN_HUAWEI_DSX_FW_UPDATE) += synaptics_dsx_fw_update.o
+obj-$(CONFIG_TOUCHSCREEN_HUAWEI_DSX_TEST_REPORTING) += synaptics_dsx_test_reporting.o
+obj-$(CONFIG_TOUCHSCREEN_HUAWEI_DSX_PROXIMITY) += synaptics_dsx_proximity.o
+obj-$(CONFIG_CYPRESS_CYTTSP4_BUS) += cyttsp4_bus.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_I2C)	+= cyttsp4_i2c.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4)	+= cyttsp4_core.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4)	+= cyttsp4_platform.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_SPI)	+= cyttsp4_spi.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_MT_A)	+= cyttsp4_mt_a.o
+cyttsp4_mt_a-y := cyttsp4_mta.o cyttsp4_mt_common.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_MT_B)	+= cyttsp4_mt_b.o
+cyttsp4_mt_b-y := cyttsp4_mtb.o cyttsp4_mt_common.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_BUTTON)	+= cyttsp4_btn.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_PROXIMITY)	+= cyttsp4_proximity.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_DEVICE_ACCESS)	+= cyttsp4_device_access.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_TEST_DEVICE_ACCESS_API)	+= cyttsp4_test_device_access_api.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_LOADER)	+= cyttsp4_loader.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_DEBUG_MODULE)	+= cyttsp4_debug.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_DEVICETREE_SUPPORT)	+= cyttsp4_devtree.o
+ifeq ($(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_DEBUG),y)
+CFLAGS_cyttsp4_bus.o += -DDEBUG
+CFLAGS_cyttsp4_core.o += -DDEBUG
+CFLAGS_cyttsp4_i2c.o += -DDEBUG
+CFLAGS_cyttsp4_spi.o += -DDEBUG
+CFLAGS_cyttsp4_mta.o += -DDEBUG
+CFLAGS_cyttsp4_mtb.o += -DDEBUG
+CFLAGS_cyttsp4_mt_a.o += -DDEBUG
+CFLAGS_cyttsp4_mt_b.o += -DDEBUG
+CFLAGS_cyttsp4_mt_common.o += -DDEBUG
+CFLAGS_cyttsp4_btn.o += -DDEBUG
+CFLAGS_cyttsp4_proximity.o += -DDEBUG
+CFLAGS_cyttsp4_device_access.o += -DDEBUG
+CFLAGS_cyttsp4_loader.o += -DDEBUG
+CFLAGS_cyttsp4_debug.o += -DDEBUG
+CFLAGS_cyttsp4_devtree.o += -DDEBUG
+CFLAGS_cyttsp4_platform.o += -DDEBUG
+endif
+
+ifeq ($(CONFIG_TOUCHSCREEN_CYPRESS_CYTTSP4_VDEBUG),y)
+CFLAGS_cyttsp4_bus.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_core.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_i2c.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_spi.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_mta.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_mtb.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_mt_a.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_mt_b.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_mt_common.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_btn.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_proximity.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_device_access.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_loader.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_debug.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_devtree.o += -DVERBOSE_DEBUG
+CFLAGS_cyttsp4_platform.o += -DVERBOSE_DEBUG
+endif
+

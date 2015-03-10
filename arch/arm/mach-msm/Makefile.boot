@@ -99,36 +99,68 @@ endif
 
 # MSM8226
    zreladdr-$(CONFIG_ARCH_MSM8226)	:= 0x00008000
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-sim.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-fluid.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-cdp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-mtp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-qrd-evt.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-qrd-dvt.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-720p-cdp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-1080p-cdp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-720p-mtp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-1080p-mtp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-qrd-evt.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-qrd-dvt.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-720p-cdp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-1080p-cdp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-720p-mtp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-1080p-mtp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-qrd.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-qrd-skug.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-qrd-skug-pvt.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-qrd-skuf.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-qrd-skuf.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v1-xpm.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v1-cdp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v1-mtp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-xpm.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-720p-cdp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-1080p-cdp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-720p-mtp.dtb
-	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-1080p-mtp.dtb
+# reduce DTB size delete MSM dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-sim.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-fluid.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-cdp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-mtp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-qrd-evt.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-qrd-dvt.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-720p-cdp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-1080p-cdp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-720p-mtp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-1080p-mtp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-qrd-evt.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-qrd-dvt.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-720p-cdp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-1080p-cdp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-720p-mtp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-1080p-mtp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-qrd.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-qrd-skug.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-qrd-skug-pvt.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-qrd-skuf.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v2-qrd-skuf.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v1-xpm.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v1-cdp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v1-mtp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-xpm.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-720p-cdp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-1080p-cdp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-720p-mtp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-1080p-mtp.dtb
+#	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-g750-va.dtb
+	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-mainboard.dtb
+	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-g750c-vb.dtb
 
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-mainboard-va.dtb
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g6_l11-va.dtb
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-mate2-va.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g6_l11-vb.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g6_l22-va.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g6_l33-va.dtb
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g620tl-va.dtb
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g620cl-va.dtb
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g620ul-va.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g535_l11-va.dtb
+
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g660tl-va.dtb
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g660cl-va.dtb
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g660ul-va.dtb
+
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g620tl-vb.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g620cl-vb.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g620ul-vb.dtb
+
+#       dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g660-l075-va.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-mate2-vb.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g730-l072-va.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g730-l073-va.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g730-l075-va.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-g660-l075-vb.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-y536_a1-va.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-y536_a1-vb.dtb
+        dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-y536_a1-vc.dtb
 # FSM9XXX
    zreladdr-$(CONFIG_ARCH_FSM9XXX)	:= 0x10008000
 params_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x10000100

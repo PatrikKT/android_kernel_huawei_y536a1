@@ -9,6 +9,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+
+#ifdef CONFIG_HUAWEI_KERNEL
+/* Open debug log for development version, will be closed after TR5 */
+#ifdef CONFIG_DYNAMIC_DEBUG
+#undef CONFIG_DYNAMIC_DEBUG
+#endif
+#ifndef DEBUG
+#define DEBUG
+#endif
+#endif
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/firmware.h>
@@ -93,14 +104,14 @@
 #define WCD9XXX_MEAS_DELTA_MAX_MV 120
 #define WCD9XXX_MEAS_INVALD_RANGE_LOW_MV 20
 #define WCD9XXX_MEAS_INVALD_RANGE_HIGH_MV 80
-
+/* enable mbhc's cs mode to detect headset and set some value to adapt auto MMI */
+#define CSMODE_HS_DETECT_PLUG_INERVAL_MS  200
 /*
  * Invalid voltage range for the detection
  * of plug type with current source
  */
-#define WCD9XXX_CS_MEAS_INVALD_RANGE_LOW_MV 160
-#define WCD9XXX_CS_MEAS_INVALD_RANGE_HIGH_MV 265
-
+#define WCD9XXX_CS_MEAS_INVALD_RANGE_LOW_MV 3110
+#define WCD9XXX_CS_MEAS_INVALD_RANGE_HIGH_MV 3265
 /*
  * Threshold used to detect euro headset
  * with current source
@@ -121,7 +132,9 @@
 #define WCD9XXX_V_CS_HS_MAX 500
 #define WCD9XXX_V_CS_NO_MIC 5
 #define WCD9XXX_MB_MEAS_DELTA_MAX_MV 80
-#define WCD9XXX_CS_MEAS_DELTA_MAX_MV 12
+/* enable mbhc's cs mode to detect headset and set some value to adapt auto MMI */
+#define WCD9XXX_CS_MEAS_DELTA_MAX_MV 35
+#define WCD9XXX_CS_MEAS_DELTA_SPECIAL_MAX_MV 350
 
 static int impedance_detect_en;
 module_param(impedance_detect_en, int,
@@ -129,6 +142,8 @@ module_param(impedance_detect_en, int,
 MODULE_PARM_DESC(impedance_detect_en, "enable/disable impedance detect");
 
 static bool detect_use_vddio_switch;
+
+static bool is_factory_mode = false;
 
 struct wcd9xxx_mbhc_detect {
 	u16 dce;
@@ -181,6 +196,102 @@ static s16 wcd9xxx_get_current_v(struct wcd9xxx_mbhc *mbhc,
 				 const enum wcd9xxx_current_v_idx idx);
 static void wcd9xxx_get_z(struct wcd9xxx_mbhc *mbhc, s16 *dce_z, s16 *sta_z);
 static void wcd9xxx_mbhc_calc_thres(struct wcd9xxx_mbhc *mbhc);
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#define PRODUCT_IDENTIFIER_NODE  "product-identifier"
+#define HW_DEVICE_SUPPORT_TTY 0x81
+#define HW_DEVICE_OTHER       0x80
+#define HW_DEVICE_MASK        0x7F
+#define HUAWEI_MATE2_STRING      "mate2"
+#define HUAWEI_Y536_STRING       "y536"
+
+const char* device_for_tty[] = {HUAWEI_MATE2_STRING,HUAWEI_Y536_STRING};
+
+/* according to the speed of insert headjack,delay special time,
+ * here set time to 800ms for mate2 there's a special resistance(499ohm),
+ * if no this delay, sometimes will detect headphone to headset
+ */
+#define HW_TTYDEV_DEBOUNCE_TIME 800
+
+/* Function    : is_support_ttydevice
+ * Description : this function simply detect the running device whether support tty or not
+ * In headjack insert interrupt, it will read product identifier from hw_audio_info
+ * to determine the device type
+ * return value: true means suport tty
+ * History    : created 20140424 by lishubin
+ */
+static bool is_support_ttydevice( void )
+{
+    struct device_node *of_audio_node = NULL ;
+    const char* stridentify = NULL;
+    int ret = 0;
+
+    /*search hw_audio_info */
+    if( NULL == of_audio_node ){
+        of_audio_node = of_find_compatible_node(NULL, NULL, "huawei,hw_audio_info");
+        if( !of_audio_node ) {
+            pr_err("Can not find dev node: \"hw_audio_info\"\n");
+            return false;
+        }
+    }
+
+    /* read for product-identifier*/
+    ret = of_property_read_string(of_audio_node, PRODUCT_IDENTIFIER_NODE, &stridentify);
+    if(ret || (NULL == stridentify)){
+        pr_err("of_property_read_string product-identifier failed %d\n", ret);
+        return false;
+    }
+
+    for( ret = 0 ; ret < sizeof(device_for_tty)/sizeof(char *); ret++ )
+    {
+        /* compare identifer name length */
+        if( strlen(stridentify) != strlen(device_for_tty[ret])) {
+            continue;
+        }
+        /* compare identifer name */
+        if( strncmp(stridentify,device_for_tty[ret],strlen(device_for_tty[ret])) ){
+            continue;
+        }
+        break;
+    }
+    if( ret >= sizeof(device_for_tty)/sizeof(char *) ){
+        return false;
+    }else{
+        pr_debug("This device is [%s] support tty device \n",device_for_tty[ret]);
+        return true;
+    }
+}
+
+/* Function    : can_device_support_tty
+ * Description : detect devices wheter support tty or not
+ *               befor return false can add more than one device detection
+ * return value: true is supported
+ *
+ */
+static bool can_device_support_tty(void)
+{
+    static int isttydev = 0;
+    /* use for read hw_audio_info node once */
+    if( isttydev != 0 ) {
+        if( isttydev & HW_DEVICE_MASK ){
+           return true;
+        }
+        else{
+           return false;
+        }
+    }
+
+    /* detect whether support tty or not  */
+    isttydev = is_support_ttydevice();
+    if( isttydev ){
+        isttydev = HW_DEVICE_SUPPORT_TTY;
+        return true;
+    }
+    
+    isttydev = HW_DEVICE_OTHER;
+    return false;
+}
+#endif
 
 static bool wcd9xxx_mbhc_polling(struct wcd9xxx_mbhc *mbhc)
 {
@@ -1059,6 +1170,11 @@ static s32 __wcd9xxx_codec_sta_dce_v(struct wcd9xxx_mbhc *mbhc, s8 dce,
 		mv = (value - z) * (s32)micb_mv / (mb - z);
 	}
 
+#ifdef CONFIG_HUAWEI_KERNEL
+    pr_debug("%s: dce=%d, bias_value=%d, value=%d, z=%d, mb=%d, mv=%d", 
+        __func__, dce, bias_value, value, z, mb, mv);
+#endif
+
 	return mv;
 }
 
@@ -1383,6 +1499,11 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 			type = PLUG_TYPE_INVALID;
 			goto exit;
 		}
+		/* set value before original, use for below  if condition */
+		if( d->mic_bias )
+		{
+		   dmicbias = d;
+		}
 	}
 
 	delta_thr = ((highhph_cnt == sz) || highhph) ?
@@ -1403,7 +1524,17 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 			pr_debug("%s: Invalid, delta %dmv, %dmv and %dmv\n",
 				 __func__, d->_vdces, minv, maxv);
 			type = PLUG_TYPE_INVALID;
-			goto exit;
+			/* modify exit condition for HPH_TYPE & detect micbias*/
+			if( PLUG_TYPE_HIGH_HPH == d->_type && dmicbias )
+			{
+			  if(abs(minv - d->_vdces) > WCD9XXX_CS_MEAS_DELTA_SPECIAL_MAX_MV ||
+			     abs(maxv - d->_vdces) > WCD9XXX_CS_MEAS_DELTA_SPECIAL_MAX_MV )
+			     goto exit;
+			}
+			else
+			{
+			     goto exit;
+			}
 		} else if (d->swap_gnd) {
 			dgnd = d;
 		}
@@ -1460,6 +1591,18 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 		goto exit;
 	}
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(!can_device_support_tty())	{
+		if (!(event_state & (1UL << MBHC_EVENT_PA_HPHL))) { 
+			if (((type == PLUG_TYPE_HEADSET || 
+			      type == PLUG_TYPE_HEADPHONE) && ch != sz)) { 
+				pr_debug("%s: Invalid, not fully inserted, TYPE %d\n", 
+				__func__, type); 
+				type = PLUG_TYPE_INVALID; 
+			} 
+		}
+	}
+#else
 	if (!(event_state & (1UL << MBHC_EVENT_PA_HPHL))) {
 		if (((type == PLUG_TYPE_HEADSET ||
 		      type == PLUG_TYPE_HEADPHONE) && ch != sz)) {
@@ -1468,6 +1611,7 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 			type = PLUG_TYPE_INVALID;
 		}
 	}
+#endif
 
 	if (type == PLUG_TYPE_HEADSET &&
 	    (mbhc->mbhc_cfg->micbias_enable_flags &
@@ -1504,6 +1648,9 @@ wcd9xxx_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 	const s16 no_mic = plug_type->v_no_mic;
 
 	pr_debug("%s: event_state 0x%lx\n", __func__, event_state);
+#ifdef CONFIG_HUAWEI_KERNEL
+	pr_debug("%s: huawei_audio: no_mic=%d, hs_max=%d\n", __func__, no_mic, hs_max);
+#endif
 
 	for (i = 0, d = dt, ch = 0; i < size; i++, d++) {
 		vdce = wcd9xxx_codec_sta_dce_v(mbhc, true, d->dce);
@@ -1761,6 +1908,11 @@ wcd9xxx_codec_cs_get_plug_type(struct wcd9xxx_mbhc *mbhc, bool highhph)
 			wcd9xxx_turn_onoff_current_source(mbhc, true, false);
 		if (rt[i].swap_gnd)
 			wcd9xxx_codec_hphr_gnd_switch(codec, false);
+		/* add this code to correct detecting of TTY device */
+		if( rt[i].swap_gnd && rt[i-1].mic_bias)
+		{
+			msleep(CSMODE_HS_DETECT_PLUG_INERVAL_MS);
+		}
 	}
 
 	type = wcd9xxx_cs_find_plug_type(mbhc, rt, ARRAY_SIZE(rt), highhph,
@@ -2103,6 +2255,27 @@ static void wcd9xxx_mbhc_decide_swch_plug(struct wcd9xxx_mbhc *mbhc)
 		wcd9xxx_turn_onoff_override(mbhc, true);
 		plug_type = wcd9xxx_codec_get_plug_type(mbhc, true);
 		wcd9xxx_turn_onoff_override(mbhc, false);
+	}
+
+	if(is_factory_mode)
+	{
+		pr_debug("huawei_audio %s: in factory mode, with plug_type %d\n",
+			__func__, plug_type);
+		if(PLUG_TYPE_HEADPHONE == plug_type)
+		{
+			plug_type = PLUG_TYPE_HEADSET;
+			pr_debug("huawei_audio %s: changed to plug_type %d\n",
+				__func__, plug_type);
+		}
+		else
+		{
+			pr_debug("huawei_audio %s: no change\n", __func__);
+		}
+	}
+	else
+	{
+		pr_debug("huawei_audio %s: NOT in factory mode, with plug_type %d\n",
+			__func__, plug_type);
 	}
 
 	if (wcd9xxx_swch_level_remove(mbhc)) {
@@ -2783,6 +2956,27 @@ static void wcd9xxx_correct_swch_plug(struct work_struct *work)
 			plug_type = wcd9xxx_codec_get_plug_type(mbhc, true);
 		WCD9XXX_BCL_UNLOCK(mbhc->resmgr);
 
+		if(is_factory_mode)
+		{
+			pr_debug("huawei_audio %s: in factory mode, with plug_type %d\n",
+				__func__, plug_type);
+			if(PLUG_TYPE_HEADPHONE == plug_type)
+			{
+				plug_type = PLUG_TYPE_HEADSET;
+				pr_debug("huawei_audio %s: changed to plug_type %d\n",
+					__func__, plug_type);
+			}
+			else
+			{
+				pr_debug("huawei_audio %s: no change\n", __func__);
+			}
+		}
+		else
+		{
+			pr_debug("huawei_audio %s: NOT in factory mode, with plug_type %d\n",
+				__func__, plug_type);
+		}
+
 		pr_debug("%s: attempt(%d) current_plug(%d) new_plug(%d)\n",
 			 __func__, retry, mbhc->current_plug, plug_type);
 
@@ -2906,16 +3100,28 @@ static void wcd9xxx_swch_irq_handler(struct wcd9xxx_mbhc *mbhc)
 	if (wcd9xxx_cancel_btn_work(mbhc))
 		pr_debug("%s: button press is canceled\n", __func__);
 
-	/* cancel detect plug */
-	wcd9xxx_cancel_hs_detect_plug(mbhc,
-				      &mbhc->correct_plug_swch);
-
 	insert = !wcd9xxx_swch_level_remove(mbhc);
 	pr_debug("%s: Current plug type %d, insert %d\n", __func__,
 		 mbhc->current_plug, insert);
 	if ((mbhc->current_plug == PLUG_TYPE_NONE) && insert) {
+		/* in cs mode, when insert , increase 200ms debounce*/
+		msleep(CSMODE_HS_DETECT_PLUG_INERVAL_MS); 
+		
+#ifdef CONFIG_HUAWEI_KERNEL
+		if( can_device_support_tty()) 	{ 
+			/* because support for TTY, here add a debounce time to adapt insert 
+			 * a headphone slowly.
+			 * for a normal inserting, time is less than 800ms, here add a 800ms
+			 */
+			msleep(HW_TTYDEV_DEBOUNCE_TIME); 
+		}
+#endif
 		mbhc->lpi_enabled = false;
 		wmb();
+
+		/* cancel detect plug */
+		wcd9xxx_cancel_hs_detect_plug(mbhc,
+				      &mbhc->correct_plug_swch);
 
 		if ((mbhc->current_plug != PLUG_TYPE_NONE) &&
 		    !(snd_soc_read(codec, WCD9XXX_A_MBHC_INSERT_DETECT) &
@@ -2930,6 +3136,10 @@ static void wcd9xxx_swch_irq_handler(struct wcd9xxx_mbhc *mbhc)
 	} else if ((mbhc->current_plug != PLUG_TYPE_NONE) && !insert) {
 		mbhc->lpi_enabled = false;
 		wmb();
+
+ 		/* cancel detect plug */
+ 		wcd9xxx_cancel_hs_detect_plug(mbhc,
+ 				      &mbhc->correct_plug_swch);
 
 		if (mbhc->current_plug == PLUG_TYPE_HEADPHONE) {
 			wcd9xxx_report_plug(mbhc, 0, SND_JACK_HEADPHONE);
@@ -3061,6 +3271,13 @@ static int wcd9xxx_determine_button(const struct wcd9xxx_mbhc *mbhc,
 						 MBHC_BTN_DET_V_BTN_HIGH);
 
 	for (i = 0; i < btn_det->num_btn; i++) {
+#ifdef CONFIG_HUAWEI_KERNEL
+		if (0 == i)
+		{
+			pr_debug("%s: huawei_audio: btn_low=%d, btn_high=%d\n",
+					__func__, v_btn_low[0], v_btn_high[0]);
+        }
+#endif
 		if ((v_btn_low[i] <= micmv) && (v_btn_high[i] >= micmv)) {
 			btn = i;
 			break;
@@ -3128,6 +3345,17 @@ static void wcd9xxx_get_z(struct wcd9xxx_mbhc *mbhc, s16 *dce_z, s16 *sta_z)
 		pr_debug("%s: sta_z 0x%x\n", __func__, *sta_z & 0xFFFF);
 	}
 	if (dce_z) {
+		*dce_z = wcd9xxx_codec_sta_dce(mbhc, 1, false);
+		pr_debug("%s: dce_z 0x%x\n", __func__, *dce_z & 0xFFFF);
+	}
+	/* Verify address validity, before print log */
+	if (sta_z)
+	{
+		*sta_z = wcd9xxx_codec_sta_dce(mbhc, 0, false);
+		pr_debug("%s: sta_z 0x%x\n", __func__, *sta_z & 0xFFFF);
+	}
+	if (dce_z)
+	{
 		*dce_z = wcd9xxx_codec_sta_dce(mbhc, 1, false);
 		pr_debug("%s: dce_z 0x%x\n", __func__, *dce_z & 0xFFFF);
 	}
@@ -4230,10 +4458,13 @@ static int wcd9xxx_event_notify(struct notifier_block *self, unsigned long val,
 	struct wcd9xxx_mbhc *mbhc = ((struct wcd9xxx_resmgr *)data)->mbhc;
 	struct snd_soc_codec *codec = mbhc->codec;
 	enum wcd9xxx_notify_event event = (enum wcd9xxx_notify_event)val;
-
-	pr_debug("%s: enter event %s(%d)\n", __func__,
-		 wcd9xxx_get_event_string(event), event);
-
+    /* only need the notify for "MICBIAS_x" and "HPHx_PA" event */
+    if( ((event > WCD9XXX_EVENT_POST_BG_MBHC_ON) && (event < WCD9XXX_EVENT_PRE_CFILT_1_OFF)) ||
+        ((event > WCD9XXX_EVENT_POST_CFILT_3_ON) && (event < WCD9XXX_EVENT_PRE_TX_1_3_ON)) )
+    {
+        pr_debug("%s: enter event %s(%d)\n", __func__,
+            wcd9xxx_get_event_string(event), event);
+    }
 	switch (event) {
 	/* MICBIAS usage change */
 	case WCD9XXX_EVENT_PRE_MICBIAS_1_ON:
@@ -4250,6 +4481,22 @@ static int wcd9xxx_event_notify(struct notifier_block *self, unsigned long val,
 			if (mbhc->polling_active)
 				wcd9xxx_enable_mbhc_txfe(mbhc, true);
 		}
+		/* 1.when in call mode, if headset exist and not switch micbias mode 
+		   there will occur noise in tx direction
+		   2.qcom had added some code to solve this problem when use slave mic,
+		   but not include master mic
+		   3.code below can process slave and master mic, and the code also use 
+		   qcom original code(in case WCD9XXX_EVENT_PRE_TX_3_ON)
+		*/
+#ifdef CONFIG_HUAWEI_KERNEL
+		else if( MBHC_MICBIAS1 == wcd9xxx_event_to_micbias(event))
+		{
+		if (!(snd_soc_read(codec, mbhc->mbhc_bias_regs.ctl_reg)
+		      & 0x80) &&
+		    mbhc->polling_active && !mbhc->mbhc_micbias_switched)
+			wcd9xxx_switch_micbias(mbhc, 1);
+		}
+#endif
 		break;
 	case WCD9XXX_EVENT_POST_MICBIAS_1_ON:
 	case WCD9XXX_EVENT_POST_MICBIAS_2_ON:
@@ -4287,6 +4534,18 @@ static int wcd9xxx_event_notify(struct notifier_block *self, unsigned long val,
 			snd_soc_update_bits(codec, mbhc->mbhc_bias_regs.ctl_reg,
 					    0x80, 0x80);
 		}
+		/* the same comment with case WCD9XXX_EVENT_PRE_MICBIAS_1_ON
+		  these code is also use qcom original code in case WCD9XXX_EVENT_POST_TX_3_OFF
+		*/
+#ifdef CONFIG_HUAWEI_KERNEL
+		else if( MBHC_MICBIAS1 == wcd9xxx_event_to_micbias(event))
+		{
+		if (mbhc->polling_active && mbhc->mbhc_micbias_switched &&
+		    !(mbhc->event_state & (1 << MBHC_EVENT_PA_HPHL |
+		      1 << MBHC_EVENT_PA_HPHR)))
+			wcd9xxx_switch_micbias(mbhc, 0);
+		}
+#endif
 		break;
 	/* PA usage change */
 	case WCD9XXX_EVENT_PRE_HPHL_PA_ON:
@@ -4427,9 +4686,11 @@ static int wcd9xxx_event_notify(struct notifier_block *self, unsigned long val,
 		WARN(1, "Unknown event %d\n", event);
 		ret = -EINVAL;
 	}
-
-	pr_debug("%s: leave\n", __func__);
-
+    if( ((event > WCD9XXX_EVENT_POST_BG_MBHC_ON) && (event < WCD9XXX_EVENT_PRE_CFILT_1_OFF)) ||
+        ((event > WCD9XXX_EVENT_POST_CFILT_3_ON) && (event < WCD9XXX_EVENT_PRE_TX_1_3_ON)) )
+    {
+        pr_debug("%s: leave\n", __func__);
+    }
 	return ret;
 }
 
@@ -4553,6 +4814,9 @@ int wcd9xxx_mbhc_get_impedance(struct wcd9xxx_mbhc *mbhc, uint32_t *zl,
 		return -EINVAL;
 }
 
+#define CMDLINE_FAC_RUNMODE "androidboot.huawei_swtype=factory"
+extern char *saved_command_line;
+
 /*
  * wcd9xxx_mbhc_init : initialize MBHC internal structures.
  *
@@ -4570,6 +4834,25 @@ int wcd9xxx_mbhc_init(struct wcd9xxx_mbhc *mbhc, struct wcd9xxx_resmgr *resmgr,
 	void *core_res;
 
 	pr_debug("%s: enter\n", __func__);
+
+	if(NULL == saved_command_line)
+	{
+		pr_debug("huawei_audio %s: no command line\n", __func__);
+	}
+	else
+	{
+		if(strstr(saved_command_line, CMDLINE_FAC_RUNMODE) != NULL)
+		{
+			is_factory_mode = true;
+			pr_debug("huawei_audio %s: in factory mode\n", __func__);
+		}
+		else
+		{
+			is_factory_mode = false;
+			pr_debug("huawei_audio %s: NOT in factory mode\n", __func__);
+		}
+	}
+
 	memset(&mbhc->mbhc_bias_regs, 0, sizeof(struct mbhc_micbias_regs));
 	memset(&mbhc->mbhc_data, 0, sizeof(struct mbhc_internal_cal_data));
 
@@ -4667,6 +4950,10 @@ int wcd9xxx_mbhc_init(struct wcd9xxx_mbhc *mbhc, struct wcd9xxx_resmgr *resmgr,
 			mbhc->intr_ids->poll_plug_rem);
 		goto err_remove_irq;
 	}
+	/* because there is another remove irq handler, here disable remove irq */
+#ifdef CONFIG_HUAWEI_KERNEL
+	wcd9xxx_disable_irq(core_res, WCD9XXX_IRQ_MBHC_REMOVAL);
+#endif
 
 	ret = wcd9xxx_request_irq(core_res, mbhc->intr_ids->dce_est_complete,
 				  wcd9xxx_dce_handler, "DC Estimation detect",

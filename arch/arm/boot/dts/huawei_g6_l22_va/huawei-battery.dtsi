@@ -1,0 +1,22 @@
+/ {
+        qrd_batterydata: qcom,battery-data {
+               qcom,rpull-up-kohm = <68>;
+               qcom,vref-batt-therm = <1800000>;
+               /include/ "HB3742A0EBC_SONY_SCUD-4v35-2000mah.dtsi"
+               /include/ "HB3742A0EBC_ATL_SWD-4v35-2000mah.dtsi"
+        };
+};
+
+&pm8226_bms {
+	qcom,battery-data = <&qrd_batterydata>;
+	qcom,low-voltage-threshold = <3250000>;
+};
+
+&pm8226_chg {
+	status = "okay";
+	qcom,vddmax-mv = <4350>;
+	qcom,vddsafe-mv = <4380>;
+	qcom,tchg-mins = <512>;
+	qcom,battery-data = <&qrd_batterydata>;
+};
+/*remove redundant node*/

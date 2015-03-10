@@ -35,3 +35,28 @@ config FB_MSM_MDSS_MDP3
 	---help---
 	The MDP3 provides support for an older version display controller
 	included in latest display sub-system, known as MDSS.
+
+config HUAWEI_LCD
+	depends on HUAWEI_KERNEL
+	bool "LCD display support"
+	default n
+	---help---
+	  use huawei feature
+config HUAWEI_LCD_BIAS_TEST
+	depends on HUAWEI_LCD
+	bool "LCD BIAS test"
+	default n
+	---help---
+	Choose y to enable the huawei lcd bias voltage test feature
+
+config FB_AUTO_CABC
+	bool "Support for AUTO_CABC fuction"
+	depends on HUAWEI_LCD
+	default n
+#//remove dynamic gamma
+
+config FB_DISPLAY_INVERSION
+	bool "Support DISPLAY_INVERSION fuction for LCD"
+	depends on FB_MSM
+	default n
+

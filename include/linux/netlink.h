@@ -29,6 +29,7 @@
 
 #define NETLINK_INET_DIAG	NETLINK_SOCK_DIAG
 
+#define NETLINK_HW_KSTATE   30  /* kstate send event to user */
 #define MAX_LINKS 32		
 
 struct sockaddr_nl {

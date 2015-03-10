@@ -1,0 +1,43 @@
+&soc{
+    i2c@f9925000 {
+       charger: ti,bq2419x {
+                cell-index = <0>;
+                compatible = "ti,bq2419x_charger";
+                reg = <0x6B>;
+                max_charger_currentmA = <1880>;
+                max_charger_voltagemV = <4350>;
+                max_cin_limit_currentmA = <2000>;
+                gpio = <114>;
+                gpio_int = <67>;
+       };
+   };
+   
+   i2c@f9925000 {
+       battery: ti,bq27510 {
+                compatible = "ti,bq27510_battery";
+                reg = <0x55>;
+                gpio = <27>;
+                soc_reg = <0x2c>;
+                config_name = "BQ27510_SONY_3760";
+       };
+   };
+};
+
+&pm8226_pon {
+	interrupts = <0x0 0x8 0x0>,
+		     <0x0 0x8 0x1>,
+		     <0x0 0x8 0x2>,
+		     <0x0 0x8 0x3>,
+		     <0x0 0x8 0x4>,
+		     <0x0 0x8 0x5>;
+	interrupt-names = "kpdpwr", "resin", "cblpwr", "kpdpwr-bark",
+			"resin-bark", "kpdpwr-resin-bark";
+	qcom,pon_4 {
+		qcom,pon-type = <2>;
+		qcom,pull-up = <1>;
+	};
+};
+
+&pm8226_chg {
+	qcom,use-cbl-powerup;
+};

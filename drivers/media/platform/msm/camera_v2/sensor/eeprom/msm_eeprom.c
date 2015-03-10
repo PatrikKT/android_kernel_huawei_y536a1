@@ -172,6 +172,12 @@ int32_t read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl)
 	emap = eb_info->eeprom_map;
 
 	for (j = 0; j < eb_info->num_blocks; j++) {
+		/*add for muti i2c slave*/
+		if (emap[j].slave_addr.valid_size) 
+		{
+			e_ctrl->i2c_client.cci_client->sid  = emap[j].slave_addr.addr >> 1;
+		}
+		
 		if (emap[j].page.valid_size) {
 			e_ctrl->i2c_client.addr_type = emap[j].page.addr_t;
 			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
@@ -317,7 +323,8 @@ static int msm_eeprom_alloc_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 				       struct device_node *of)
 {
 	int i, rc = 0;
-	char property[14];
+	/*change for muti i2c slave*/
+	char property[20];
 	uint32_t count = 6;
 	struct msm_eeprom_board_info *eb = e_ctrl->eboard_info;
 
@@ -337,6 +344,14 @@ static int msm_eeprom_alloc_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 	}
 
 	for (i = 0; i < eb->num_blocks; i++) {
+		/*add for muti i2c slave*/
+		snprintf(property, 18, "qcom,slave_addr%d", i);
+		rc = of_property_read_u32_array(of, property,
+		(uint32_t *) &eb->eeprom_map[i].slave_addr, count);
+		if (rc < 0) {
+			pr_err("%s: slave_addr not needed\n", __func__);
+		}
+		
 		snprintf(property, 12, "qcom,page%d", i);
 		rc = of_property_read_u32_array(of, property,
 			(uint32_t *) &eb->eeprom_map[i].page, count);
@@ -436,6 +451,17 @@ int32_t msm_eeprom_i2c_probe(struct i2c_client *client,
 		pr_err("%s:%d board info NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
+
+	/*fix muti i2c eeprom invalid bug*/
+	//qct patch for eeprom
+	rc = of_property_read_u32(of_node, "cell-index", &temp);
+	CDBG("%s  eeprom cell index %d, rc %d\n", __func__,
+			temp, rc);
+	if (rc < 0) {
+			pr_err("%s failed %d\n", __func__, __LINE__);
+			return rc;
+		}
+	e_ctrl->subdev_id = temp;
 
 	rc = of_property_read_u32(of_node, "qcom,slave-addr", &temp);
 	if (rc < 0) {
@@ -988,8 +1014,8 @@ static struct platform_driver msm_eeprom_platform_driver = {
 };
 
 static const struct i2c_device_id msm_eeprom_i2c_id[] = {
-	{ "msm_eeprom", (kernel_ulong_t)NULL},
-	{ }
+	{ "qcom,eeprom", (kernel_ulong_t)NULL},
+	{ } 
 };
 
 static struct i2c_driver msm_eeprom_i2c_driver = {
@@ -997,7 +1023,8 @@ static struct i2c_driver msm_eeprom_i2c_driver = {
 	.probe  = msm_eeprom_i2c_probe,
 	.remove = __devexit_p(msm_eeprom_i2c_remove),
 	.driver = {
-		.name = "msm_eeprom",
+		.name = "qcom,eeprom",
+		.of_match_table = msm_eeprom_dt_match,
 	},
 };
 
@@ -1015,12 +1042,22 @@ static int __init msm_eeprom_init_module(void)
 {
 	int32_t rc = 0;
 	CDBG("%s E\n", __func__);
+
+	if (rc)
+	{
+		
+		rc = spi_register_driver(&msm_eeprom_spi_driver);
+		CDBG("%s:%d spi rc %d\n", __func__, __LINE__, rc);
+		rc = i2c_add_driver(&msm_eeprom_i2c_driver);
+		CDBG("%s:%d i2c_add_driver rc %d\n", __func__, __LINE__, rc);
+	}  
+
 	rc = platform_driver_probe(&msm_eeprom_platform_driver,
 		msm_eeprom_platform_probe);
-	CDBG("%s:%d platform rc %d\n", __func__, __LINE__, rc);
-	rc = spi_register_driver(&msm_eeprom_spi_driver);
-	CDBG("%s:%d spi rc %d\n", __func__, __LINE__, rc);
-	return i2c_add_driver(&msm_eeprom_i2c_driver);
+		CDBG("%s:%d platform rc %d\n", __func__, __LINE__, rc);
+	
+
+	return rc;
 }
 
 static void __exit msm_eeprom_exit_module(void)

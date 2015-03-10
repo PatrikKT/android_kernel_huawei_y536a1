@@ -665,6 +665,32 @@ config TI_DRV2667
 	  To compile this driver as a module, choose M here: the
 	  module will be called ti_drv2667.
 
+config HUAWEI_HALL_MRMS501A
+	tristate "Support for hall sensor MRMS501A"
+	depends on HUAWEI_KERNEL
+	default n
+	help
+	  Say Y to enable support mrms501a hall sensor
+
+config HUAWEI_HALL_AK8789
+	tristate "Support for hall sensor AK8789"
+	depends on HUAWEI_KERNEL
+	default n
+	help
+	  Say Y to enable support ak8789 hall sensor
+config HUAWEI_SENSOR_SELF_ADAPT
+	tristate "Support for adsp sensor self_adapt"
+	depends on HUAWEI_KERNEL
+	default n
+	help
+	  Say Y to enable support adsp self-adapt
+config HUAWEI_HEARTBEAT
+        tristate "provide heartbeat during bootup"
+        depends on HUAWEI_KERNEL
+        default n
+        help
+          Say Y to resolve boot slowlier when enable SELinux
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -673,4 +699,6 @@ source "drivers/misc/ti-st/Kconfig"
 source "drivers/misc/lis3lv02d/Kconfig"
 source "drivers/misc/carma/Kconfig"
 source "drivers/misc/altera-stapl/Kconfig"
+source "drivers/misc/huawei_apanic/Kconfig"
+source "drivers/misc/hw_kstate/Kconfig"
 endmenu

@@ -42,6 +42,12 @@ int cpufreq_frequency_table_cpuinfo(struct cpufreq_policy *policy,
 
 	policy->min = policy->cpuinfo.min_freq = min_freq;
 	policy->max = policy->cpuinfo.max_freq = max_freq;
+#ifdef CONFIG_HUAWEI_KERNEL
+	policy->qcom_min = min_freq;
+	policy->smart_min = min_freq;
+	policy->qcom_max = max_freq;
+	policy->smart_max = max_freq;
+#endif
 
 	if (policy->min == ~0)
 		return -EINVAL;

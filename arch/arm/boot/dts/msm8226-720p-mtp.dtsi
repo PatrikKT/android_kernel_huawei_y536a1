@@ -52,23 +52,26 @@
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
 
-		camera_focus {
-			label = "camera_focus";
-			gpios = <&msmgpio 108 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x210>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
+		/*we use gpio 107 and 108 for hall function,so we disable the following config*/
+		/*
+		*camera_focus {
+		*	label = "camera_focus";
+		*	gpios = <&msmgpio 108 0x1>;
+		*	linux,input-type = <1>;
+		*	linux,code = <0x210>;
+		*	gpio-key,wakeup;
+		*	debounce-interval = <15>;
+		*};
 
-		camera_snapshot {
-			label = "camera_snapshot";
-			gpios = <&msmgpio 107 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x2fe>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
+		*camera_snapshot {
+		*	label = "camera_snapshot";
+		*	gpios = <&msmgpio 107 0x1>;
+		*	linux,input-type = <1>;
+		*	linux,code = <0x2fe>;
+		*	gpio-key,wakeup;
+		*	debounce-interval = <15>;
+		*};
+		*/
 
 		vol_up {
 			label = "volume_up";

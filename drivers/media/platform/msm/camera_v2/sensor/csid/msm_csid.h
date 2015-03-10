@@ -37,6 +37,10 @@ struct csid_device {
 	struct completion reset_complete;
 	uint32_t hw_version;
 	enum msm_csid_state_t csid_state;
+#ifdef CONFIG_HUAWEI_KERNEL_CAMERA
+	/*add a delay work for read mipi packet number when stream on*/
+	struct delayed_work packet_num_work;
+#endif
 
 	struct clk *csid_clk[11];
 };

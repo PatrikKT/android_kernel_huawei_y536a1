@@ -1,0 +1,19 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&soc {
+nc_gpio {
+    compatible = "qcom,sleep_gpio";
+    ngpio = <33>;
+    gpio = <0 1 2 3 22 49 50 51 52 53 54 55 56 60 69 75 76 77 78 83 84 85 86 88 89 90 93 94 97 98 103 104 116>;
+    status = "okay";
+    };
+};

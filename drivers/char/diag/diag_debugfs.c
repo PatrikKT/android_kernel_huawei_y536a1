@@ -109,7 +109,12 @@ static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
 		"Received Feature mask from LPASS: %d\n"
 		"Received Feature mask from WCNSS: %d\n"
 		"logging_mode: %d\n"
+		#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+		"real_time_mode: %d\n"
+		"mixed_qxdmlog: %d\n",
+		#else
 		"real_time_mode: %d\n",
+		#endif
 		(unsigned int)driver->smd_data[MODEM_DATA].ch,
 		(unsigned int)driver->smd_data[LPASS_DATA].ch,
 		(unsigned int)driver->smd_data[WCNSS_DATA].ch,
@@ -178,7 +183,12 @@ static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
 		driver->rcvd_feature_mask[LPASS_DATA],
 		driver->rcvd_feature_mask[WCNSS_DATA],
 		driver->logging_mode,
+		#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+		driver->real_time_mode,
+		driver->mixed_qmdlog_flag);
+		#else
 		driver->real_time_mode);
+		#endif
 
 #ifdef CONFIG_DIAG_OVER_USB
 	ret += scnprintf(buf+ret, buf_size-ret,

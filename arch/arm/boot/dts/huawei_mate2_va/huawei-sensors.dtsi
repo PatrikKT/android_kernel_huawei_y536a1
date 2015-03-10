@@ -1,0 +1,21 @@
+ / {
+        huawei_sensor_info {
+                  compatible = "huawei,hw_sensor_info";
+                  status = "ok";
+        };
+
+        huawei_hall_sensor{
+                compatible = "huawei,hall-ak8789";
+                huawei,hall_gpio_config_rn = <&msmgpio 109 0>;
+                huawei,hall_gpio_config_rs = <&msmgpio 119 0>;
+                huawei,hall_gpio_config_ln = <&msmgpio 107 0>;
+                huawei,hall_gpio_config_ls = <&msmgpio 108 0>;
+                hall_poles = <4>;
+                reg = <0x8789 0x0>;
+                status = "ok";
+        };
+        adsp_sensor_info {
+                  compatible = "huawei,hw_adsp_info";
+                  product_name = "MATE2";
+        };
+};

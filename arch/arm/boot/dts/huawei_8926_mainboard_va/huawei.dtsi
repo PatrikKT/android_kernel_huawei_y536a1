@@ -1,0 +1,25 @@
+/include/  "huawei-fac.dtsi"
+/include/  "huawei-lcd.dtsi"
+/include/  "huawei-sensors.dtsi"
+/include/  "huawei-wifi.dtsi"
+/include/  "huawei-bt.dtsi"
+/include/  "huawei-fm.dtsi"
+/include/  "huawei-audio.dtsi"
+/include/  "huawei-tp.dtsi"
+/include/  "huawei-camera.dtsi"
+/include/  "huawei-pm.dtsi"
+/include/  "huawei-bus.dtsi"
+/include/  "huawei-storage.dtsi"
+/include/  "huawei-usb.dtsi"
+/include/  "huawei-nfc.dtsi"
+/include/  "huawei-vibrator.dtsi"
+/include/  "huawei-tricolor-led.dtsi"
+/include/  "huawei-charger.dtsi"
+/include/  "huawei-i2c-detect-va.dtsi"
+/ {
+        boardid_info {
+                  compatible = "huawei,hw_boardid_info";
+                  boardid = [44];
+                  status = "ok";
+        };
+};

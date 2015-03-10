@@ -48,7 +48,14 @@
 #define _ZONE ZONE_NORMAL
 #endif
 
+#ifdef CONFIG_HUAWEI_KSTATE
+#include <linux/hw_kstate.h>
+#endif
+
 static uint32_t lowmem_debug_level = 1;
+#ifdef CONFIG_HUAWEI_KERNEL
+static int lowmem_dumpmem_adj = -1;
+#endif
 static int lowmem_adj[6] = {
 	0,
 	1,
@@ -226,6 +233,40 @@ void tune_lmk_param(int *other_free, int *other_file, struct shrink_control *sc)
 	}
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static void dump_tasks(void)
+{
+	struct task_struct *p;
+	struct task_struct *task;
+
+	pr_info("[ pid ]   uid  tgid total_vm      rss cpu oom_adj oom_score_adj name\n");
+	for_each_process(p) {
+		task = find_lock_task_mm(p);
+		if (!task) {
+			/*
+			 * This is a kthread or all of p's threads have already
+			 * detached their mm's.  There's no need to report
+			 * them; they can't be oom killed anyway.
+			 */
+			continue;
+		}
+
+		pr_info("[%5d] %5d %5d %8lu %8lu %3u     %3d         %5d %s\n",
+			task->pid, task_uid(task), task->tgid,
+			task->mm->total_vm, get_mm_rss(task->mm),
+			task_cpu(task), task->signal->oom_adj,
+			task->signal->oom_score_adj, task->comm);
+		task_unlock(task);
+	}
+}
+
+static void dump_meminfo(void)
+{
+	show_mem(SHOW_MEM_FILTER_NODES);
+	dump_tasks();
+}
+#endif
+
 static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 {
 	struct task_struct *tsk;
@@ -341,8 +382,26 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     selected->pid, selected->comm,
 			     selected_oom_score_adj, selected_tasksize);
 		lowmem_deathpending_timeout = jiffies + HZ;
+
+#ifdef CONFIG_HUAWEI_KERNEL
+		/* 0 for forgournd, and 58 for visible process */
+		if (lowmem_dumpmem_adj >= 0 && selected_oom_score_adj <= lowmem_dumpmem_adj) {
+			dump_meminfo();
+		}
+#endif
+
+#ifdef CONFIG_HUAWEI_KSTATE
+		kstate(KSTATE_FREEZER_MASK, "[PID %d KILLED][SIG %d]", selected->tgid, SIGKILL);
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+		/* Set TIF_MEMDIE tsk_thread flag before send kill signal to theselected thread.
+		 * This is to fit a usual code sequence and avoidpotential race issue. */
+		set_tsk_thread_flag(selected, TIF_MEMDIE);
+		send_sig(SIGKILL, selected, 0);
+#else
 		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
+#endif
 		rem -= selected_tasksize;
 		rcu_read_unlock();
 		/* give the system time to free up the memory */
@@ -464,6 +523,9 @@ module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
 module_param_named(lmk_fast_run, lmk_fast_run, int, S_IRUGO | S_IWUSR);
+#ifdef CONFIG_HUAWEI_KERNEL
+module_param_named(debug_dumpmem_adj, lowmem_dumpmem_adj, int, S_IRUGO | S_IWUSR);
+#endif
 
 module_init(lowmem_init);
 module_exit(lowmem_exit);

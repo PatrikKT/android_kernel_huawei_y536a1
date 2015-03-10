@@ -29,8 +29,20 @@
 
 #include <asm/ioctls.h>
 
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+#include <linux/huawei_boot_log.h>
+#include <mach/msm_smem.h>
+#include <linux/io.h>
+ /*chang the boot_log_virt from local variable to globle variable, it will be used when restart */
+void*  boot_log_virt  = NULL;
+#endif
+
 #ifndef CONFIG_LOGCAT_SIZE
 #define CONFIG_LOGCAT_SIZE 256
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+static int minor_of_power = 0;
 #endif
 
 /*
@@ -691,6 +703,13 @@ static long logger_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		reader = file->private_data;
 		ret = logger_set_version(reader, argp);
 		break;
+#ifdef CONFIG_HUAWEI_KERNEL
+	case FIONREAD:
+		if (minor_of_power == log->misc.minor) {
+			ret = -ENOTTY;
+		}
+		break;
+#endif
 	}
 
 	mutex_unlock(&log->mutex);
@@ -736,6 +755,93 @@ DEFINE_LOGGER_DEVICE(log_main, LOGGER_LOG_MAIN, CONFIG_LOGCAT_SIZE*1024)
 DEFINE_LOGGER_DEVICE(log_events, LOGGER_LOG_EVENTS, CONFIG_LOGCAT_SIZE*1024)
 DEFINE_LOGGER_DEVICE(log_radio, LOGGER_LOG_RADIO, CONFIG_LOGCAT_SIZE*1024)
 DEFINE_LOGGER_DEVICE(log_system, LOGGER_LOG_SYSTEM, CONFIG_LOGCAT_SIZE*1024)
+#ifdef CONFIG_HUAWEI_KERNEL
+DEFINE_LOGGER_DEVICE(log_exception, LOGGER_LOG_EXCEPTION, CONFIG_LOGCAT_SIZE*1024)
+DEFINE_LOGGER_DEVICE(log_power, LOGGER_LOG_POWER, CONFIG_LOGCAT_SIZE*1024)
+#endif
+
+static int calc_iovc_ki_left(struct iovec *iov, int nr_segs)
+{
+	int ret = 0;
+	int seg;
+	for (seg = 0; seg < nr_segs; seg++) {
+		ssize_t len = (ssize_t)iov[seg].iov_len;
+		ret += len;
+	}
+	return ret;
+}
+
+ssize_t write_log_to_exception(const char* category, char level, const char* msg)
+{
+	struct logger_log *log = &log_exception;
+	struct logger_entry header;
+	struct timespec now;
+	ssize_t ret = 0;
+	struct iovec vec[4];
+	struct iovec *iov = vec;
+	int nr_segs = sizeof(vec)/sizeof(vec[0]);
+
+	pr_info("%s:%s\n",__func__,msg);
+	/*according to the arguments, fill the iovec struct  */
+	vec[0].iov_base   = (unsigned char *) &level;
+	vec[0].iov_len    = 1;
+
+	vec[1].iov_base   = "message";
+	vec[1].iov_len    = strlen("message");  //here won't add \0
+
+	vec[2].iov_base   = (void *) category;
+	vec[2].iov_len    = strlen(category) + 1;
+
+	vec[3].iov_base   = (void *) msg;
+	vec[3].iov_len    = strlen(msg) + 1;
+
+	now = current_kernel_time();
+	header.pid = 0;
+	header.tid = 0;
+	header.sec = now.tv_sec;
+	header.nsec = now.tv_nsec;
+	header.euid = 0;
+	header.len = min(calc_iovc_ki_left(vec,nr_segs),LOGGER_ENTRY_MAX_PAYLOAD);
+	header.hdr_size = sizeof(struct logger_entry);
+
+		/* null writes succeed, return zero */
+	if (unlikely(!header.len))
+		return 0;
+
+	mutex_lock(&log->mutex);
+
+	/*
+	 * Fix up any readers, pulling them forward to the first readable
+	 * entry after (what will be) the new write offset. We do this now
+	 * because if we partially fail, we can end up with clobbered log
+	 * entries that encroach on readable buffer.
+	 */
+	fix_up_readers(log, sizeof(struct logger_entry) + header.len);
+
+	do_write_log(log, &header, sizeof(struct logger_entry));
+
+	while (nr_segs-- > 0) {
+		size_t len;
+		ssize_t nr;
+
+		/* figure out how much of this vector we can keep */
+		len = min_t(size_t, iov->iov_len, header.len - ret);
+
+		/* write out this segment's payload */
+		do_write_log(log, iov->iov_base, len);
+
+		iov++;
+		ret += nr;
+	}
+
+	mutex_unlock(&log->mutex);
+
+	/* wake up any blocked readers */
+	wake_up_interruptible(&log->wq);
+
+	return ret;
+}
+EXPORT_SYMBOL(write_log_to_exception);
 
 static struct logger_log *get_log_from_minor(int minor)
 {
@@ -747,6 +853,14 @@ static struct logger_log *get_log_from_minor(int minor)
 		return &log_radio;
 	if (log_system.misc.minor == minor)
 		return &log_system;
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (log_exception.misc.minor == minor)
+		return &log_exception;
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+	if (log_power.misc.minor == minor)
+		return &log_power;
+#endif
 	return NULL;
 }
 
@@ -770,6 +884,10 @@ static int __init init_log(struct logger_log *log)
 static int __init logger_init(void)
 {
 	int ret;
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+	struct boot_log_struct *boot_log = NULL;
+    /*chang the boot_log_virt from local variable to globle variable, it will be used when restart */
+#endif
 
 	ret = init_log(&log_main);
 	if (unlikely(ret))
@@ -787,7 +905,38 @@ static int __init logger_init(void)
 	if (unlikely(ret))
 		goto out;
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	ret = init_log(&log_exception);
+	if (unlikely(ret))
+		goto out;
+#endif
+
 out:
+#ifdef CONFIG_HUAWEI_KERNEL
+	ret = init_log(&log_power);
+	if (unlikely(ret)) {
+		//do nothing
+	}
+	minor_of_power = log_power.misc.minor;
+#endif
+
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+	/* get the share memory address */
+    boot_log_virt = ioremap_nocache(HUAWEI_BOOT_LOG_ADDR,HUAWEI_BOOT_LOG_SIZE);
+	boot_log = (struct boot_log_struct *)((unsigned int)boot_log_virt + MAGIC_NUMBER_SIZE);
+	if(NULL != boot_log) {
+		/* save logcat main and system address */
+		boot_log->logcat_main_addr = virt_to_phys(_buf_log_main);
+		boot_log->logcat_main_size = CONFIG_LOGCAT_SIZE*1024;
+		boot_log->logcat_system_addr = virt_to_phys(_buf_log_system);
+		boot_log->logcat_system_size = CONFIG_LOGCAT_SIZE*1024;
+
+		boot_log->boot_process_mask = boot_log->boot_process_mask | LOGCAT_MAIN_MASK;
+		boot_log->boot_process_mask = boot_log->boot_process_mask | LOGCAT_SYSTEM_MASK;
+        /*donot unmap bacause the memery will be used when restart*/
+	}
+#endif
+
 	return ret;
 }
 device_initcall(logger_init);

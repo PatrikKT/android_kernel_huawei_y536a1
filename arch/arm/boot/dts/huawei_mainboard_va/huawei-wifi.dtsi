@@ -1,0 +1,9 @@
+ / {
+        huawei_wifi_info {
+                  compatible = "huawei,hw_wifi_info";
+                  status = "ok";
+                  wifi,chiptype = "WIFI_TYPE_UNKNOWN";
+                  wifi,pubfile_id = "G750_C00";
+                  wifi,fw_ver = "1.4.1.2";
+        };
+};

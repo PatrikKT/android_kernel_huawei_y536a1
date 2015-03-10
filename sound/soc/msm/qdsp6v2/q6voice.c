@@ -1736,13 +1736,15 @@ static int voice_send_start_voice_cmd(struct voice_data *v)
 		pr_err("Fail in sending VSS_IMVM_CMD_START_VOICE\n");
 		goto fail;
 	}
+	pr_debug("huawei_audio: send_start_voice start, wait %d ms\n", TIMEOUT_MS);
 	ret = wait_event_timeout(v->mvm_wait,
 				 (v->mvm_state == CMD_STATUS_SUCCESS),
 				 msecs_to_jiffies(TIMEOUT_MS));
 	if (!ret) {
-		pr_err("%s: wait_event timeout\n", __func__);
+		pr_err("huawei_audio %s: wait_event timeout\n", __func__);
 		goto fail;
 	}
+	pr_debug("huawei_audio: send_start_voice success\n");
 	return 0;
 fail:
 	return -EINVAL;
@@ -3698,6 +3700,8 @@ static int voice_send_stream_mute_cmd(struct voice_data *v, uint16_t direction,
 	struct cvs_set_mute_cmd cvs_mute_cmd;
 	int ret = 0;
 
+	pr_debug("huawei_audio: voice_send_stream_mute_cmd dir %u, mute %u, duration %u\n",
+		direction, mute_flag, ramp_duration);
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
 
@@ -4486,6 +4490,8 @@ int voc_set_tx_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 	int ret = 0;
 	struct voice_session_itr itr;
 
+	pr_debug("huawei_audio: voc_set_tx_mute session_id 0x%x, mute %u, duration %u\n",
+		session_id, mute, ramp_duration);
 	voice_itr_init(&itr, session_id);
 	while (voice_itr_get_next_session(&itr, &v)) {
 		if (v != NULL) {

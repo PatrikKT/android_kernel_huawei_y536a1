@@ -68,5 +68,8 @@
 #define MTD_INODE_FS_MAGIC      0x11307854
 #define ANON_INODE_FS_MAGIC	0x09041934
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#define SDCARDFS_SUPER_MAGIC    0xb550ca10
+#endif
 
 #endif /* __LINUX_MAGIC_H__ */

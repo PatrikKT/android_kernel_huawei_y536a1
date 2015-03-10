@@ -1,0 +1,6 @@
+ / {
+        huawei_pm_info {
+                  compatible = "huawei,hw_pm_info";
+                  status = "ok";
+        };
+};

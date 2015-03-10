@@ -55,6 +55,10 @@ static struct task_struct *hotplug_task;
 static struct task_struct *freq_mitigation_task;
 static struct completion hotplug_notify_complete;
 static struct completion freq_mitigation_complete;
+#ifdef CONFIG_HUAWEI_KERNEL
+static struct kobject *hw_tc_kobj;
+#endif
+
 
 static int enabled;
 static int rails_cnt;
@@ -1764,6 +1768,98 @@ failed:
 	return ret;
 }
 
+/* two attrs which could show and store the temp and freq_step */
+#ifdef CONFIG_HUAWEI_KERNEL
+static ssize_t hw_tc_temp_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", msm_thermal_info.limit_temp_degC);
+}
+
+static ssize_t hw_tc_temp_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int32_t tc_temp;
+
+	sscanf(buf,"%d",&tc_temp);
+
+	msm_thermal_info.limit_temp_degC = tc_temp;
+	
+	return count;
+}
+
+static ssize_t hw_tc_freq_step_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", msm_thermal_info.bootup_freq_step);
+}
+
+static ssize_t hw_tc_freq_step_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	uint32_t tc_freq_step;
+
+	sscanf(buf,"%u",&tc_freq_step);
+
+	msm_thermal_info.bootup_freq_step = tc_freq_step;
+	
+	return count;
+}
+
+
+static __refdata struct kobj_attribute hw_tc_temp_attr =
+__ATTR(hw_tc_temp, 0644, hw_tc_temp_show, hw_tc_temp_store);
+
+static __refdata struct kobj_attribute hw_tc_freq_step_attr =
+__ATTR(hw_tc_freq_step, 0644, hw_tc_freq_step_show, hw_tc_freq_step_store);
+
+
+static __refdata struct attribute *hw_tc_attrs[] = {
+	&hw_tc_temp_attr.attr,
+	&hw_tc_freq_step_attr.attr,
+	NULL,
+};
+
+static __refdata struct attribute_group hw_tc_attr_group = {
+	.attrs = hw_tc_attrs,
+};
+
+static __init int msm_thermal_add_hw_tc_nodes(void)
+{
+	struct kobject *module_kobj = NULL;
+	int ret = 0;
+
+	module_kobj = kset_find_obj(module_kset, KBUILD_MODNAME);
+	if (!module_kobj) {
+		pr_err("%s: cannot find kobject for module\n",
+			KBUILD_MODNAME);
+		ret = -ENOENT;
+		goto done_hw_tc_nodes;
+	}
+
+	hw_tc_kobj = kobject_create_and_add("hw_temp_control", module_kobj);
+	if (!hw_tc_kobj) {
+		pr_err("%s: cannot create hw_temp_control kobj\n",
+				KBUILD_MODNAME);
+		ret = -ENOMEM;
+		goto done_hw_tc_nodes;
+	}
+
+	ret = sysfs_create_group(hw_tc_kobj, &hw_tc_attr_group);
+	if (ret) {
+		pr_err("%s: cannot create group\n", KBUILD_MODNAME);
+		goto done_hw_tc_nodes;
+	}
+
+	return 0;
+
+done_hw_tc_nodes:
+	if (hw_tc_kobj)
+		kobject_del(hw_tc_kobj);
+	return ret;
+}
+#endif
+
 int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
 {
 	int ret = 0;
@@ -2631,6 +2727,10 @@ int __init msm_thermal_late_init(void)
 			thermal_rtc_callback);
 	INIT_WORK(&timer_work, timer_work_fn);
 	msm_thermal_add_timer_nodes();
+
+	#ifdef CONFIG_HUAWEI_KERNEL
+	msm_thermal_add_hw_tc_nodes();
+	#endif
 
 	return 0;
 }

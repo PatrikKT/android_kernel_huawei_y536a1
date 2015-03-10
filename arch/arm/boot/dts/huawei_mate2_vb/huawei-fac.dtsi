@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI MT2-L03";
+                  fac,hardware_ver = "HL1MT2L03MT";
+		  fac,software_ver = "MSM8926_MT2-L03_VB";
+                  status = "ok";
+        };
+};

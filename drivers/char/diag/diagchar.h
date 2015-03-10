@@ -372,6 +372,9 @@ struct diagchar_dev {
 	struct workqueue_struct *diag_real_time_wq;
 #ifdef CONFIG_DIAG_OVER_USB
 	int usb_connected;
+#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+	int mixed_qmdlog_flag;
+#endif
 	struct usb_diag_ch *legacy_ch;
 	struct work_struct diag_proc_hdlc_work;
 	struct work_struct diag_read_work;
@@ -396,6 +399,9 @@ struct diagchar_dev {
 	int logging_mode;
 	int mask_check;
 	int logging_process_id;
+#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+	int mixed_qmdlog_pid;
+#endif
 	struct task_struct *socket_process;
 	struct task_struct *callback_process;
 #ifdef CONFIG_DIAG_SDIO_PIPE

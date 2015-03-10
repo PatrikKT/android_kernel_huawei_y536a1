@@ -99,6 +99,12 @@ struct cpufreq_policy {
 
 	unsigned int		min;    /* in kHz */
 	unsigned int		max;    /* in kHz */
+#ifdef CONFIG_HUAWEI_KERNEL
+	unsigned int		qcom_min;    /* in kHz */
+	unsigned int		smart_min;    /* in kHz */
+	unsigned int		qcom_max;    /* in kHz */
+	unsigned int		smart_max;    /* in kHz */
+#endif
 	unsigned int		cur;    /* in kHz, only needed if cpufreq
 					 * governors are used */
 	unsigned int            util;  /* CPU utilization at max frequency */

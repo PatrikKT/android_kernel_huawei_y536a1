@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI G750_U00";
+                  fac,hardware_ver = "HU0G750T";
+		  fac,software_ver = "MSM8x26_G750_U00_va";
+                  status = "ok";
+        };
+};

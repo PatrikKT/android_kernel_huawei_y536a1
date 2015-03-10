@@ -1,0 +1,55 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/dts-v1/;
+/include/ "msm8226-v1.dtsi"
+/include/ "msm8226-cdp.dtsi"
+/include/ "huawei_g750c_va/huawei-va.dtsi"
+
+&pm8226_l3 {
+	   regulator-min-microvolt = <750000>;
+	   regulator-max-microvolt = <1287500>;
+};
+
+&pm8226_l3_ao {
+	      regulator-min-microvolt = <750000>;
+	      regulator-max-microvolt = <1287500>;
+};
+
+&pm8226_l3_so {
+	      regulator-min-microvolt = <750000>;
+	      regulator-max-microvolt = <1287500>;
+};
+
+&pm8226_s2 {
+	   regulator-min-microvolt = <900000>;
+	   regulator-max-microvolt = <1280000>;
+};
+
+&apc_vreg_corner {
+					   qcom,pvs-corner-ceiling-slow = <1160000 1160000 1280000>;
+					   qcom,pvs-corner-ceiling-nom  =  <980000 1080000 1200000>;
+					   qcom,pvs-corner-ceiling-fast =  <900000 1000000 1140000>;
+					   qcom,cpr-step-quotient = <30>;
+					   qcom,cpr-down-threshold = <5>;
+					   qcom,cpr-apc-volt-step = <10000>;
+};
+
+/ {
+	model = "Qualcomm MSM 8226 g750c with PMIC20";
+	compatible = "qcom,msm8226-cdp", "qcom,msm8226", "qcom,cdp";
+	qcom,msm-id = <145 8069 0x20000>,
+		      <158 8069 0x20000>,
+		      <159 8069 0x20000>,
+		      <198 8069 0x20000>,
+		      <205 8069 0x20000>;
+};
+

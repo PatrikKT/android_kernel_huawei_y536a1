@@ -1,0 +1,15 @@
+
+/include/ "mipi-otm1282a-720p-cmd-cmi.dtsi"
+/include/ "default_lcd.dtsi"
+
+ / {
+	
+	mipi_otm1282a_720p_cmd_cmi{
+		status = "ok";
+	};
+	
+	default_lcd {	
+		status = "ok";
+	};
+	
+};

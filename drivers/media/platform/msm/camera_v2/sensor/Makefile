@@ -19,3 +19,21 @@ obj-$(CONFIG_OV5648) += ov5648.o
 obj-$(CONFIG_MT9M114) += mt9m114.o
 obj-$(CONFIG_SP1628) += sp1628.o
 obj-$(CONFIG_GC0339) += gc0339.o
+obj-$(CONFIG_HW_IMX135) += hw_imx135.o
+obj-$(CONFIG_HW_IMX134) += hw_imx134.o
+obj-$(CONFIG_HW_S5K4E1) += hw_s5k4e1.o
+obj-$(CONFIG_HW_OV5648) += hw_ov5648.o
+obj-$(CONFIG_HW_HI542) += hw_hi542.o
+obj-$(CONFIG_HW_S5K4E1_BACK) += hw_s5k4e1_back.o
+obj-$(CONFIG_HW_OV5648_BACK) += hw_ov5648_back.o
+obj-$(CONFIG_HW_IMX219) += hw_imx219.o
+obj-$(CONFIG_HW_OV8858) += hw_ov8858.o
+
+obj-$(CONFIG_HW_OV9724) += hw_ov9724.o
+obj-$(CONFIG_HW_MT9V113) += hw_mt9v113.o
+obj-$(CONFIG_HW_BF3905_BYD) += hw_bf3905_byd.o
+obj-$(CONFIG_HW_S5K9A1) += hw_s5k9a1.o
+obj-$(CONFIG_HW_MT9D015) += hw_mt9d015.o
+obj-$(CONFIG_HW_OV2680) += hw_ov2680.o
+#/*delete one line*/
+

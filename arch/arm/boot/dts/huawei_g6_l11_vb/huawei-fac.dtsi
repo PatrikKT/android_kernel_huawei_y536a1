@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI G6-L11";
+                  fac,hardware_ver = "HL1G6L22M";
+		  fac,software_ver = "MSM8926_G6-L11_VB";
+                  status = "ok";
+        };
+};

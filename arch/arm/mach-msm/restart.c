@@ -38,6 +38,14 @@
 #include "timer.h"
 #include "wdog_debug.h"
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <linux/huawei_apanic.h>
+#endif
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+#include <linux/huawei_boot_log.h>
+extern void*  boot_log_virt ;
+#endif
+
 #define WDT0_RST	0x38
 #define WDT0_EN		0x40
 #define WDT0_BARK_TIME	0x4C
@@ -51,13 +59,33 @@
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
-
+//Added magic mumber for sdupdate and usbupdate
+#define SDUPDATE_FLAG_MAGIC_NUM  0x77665528
+#define USBUPDATE_FLAG_MAGIC_NUM  0x77665523
+#define SD_UPDATE_RESET_FLAG   "sdupdate"
+#define USB_UPDATE_RESET_FLAG   "usbupdate"
 #define SCM_IO_DISABLE_PMIC_ARBITER	1
 
 #ifdef CONFIG_MSM_RESTART_V2
 #define use_restart_v2()	1
 #else
 #define use_restart_v2()	0
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#define RESTART_FLAG_ADDR    0x800
+#define RESTART_FLAG_MAGIC_NUM    0x20890206
+#define restart_flag_addr     (MSM_IMEM_BASE + RESTART_FLAG_ADDR)
+#ifdef CONFIG_HUAWEI_KERNEL
+#define QFUSE_MAGIC_NUM  0xF4C3D2C1
+#define QFUSE_MAGIC_OFFSET  0x24
+#endif
+#endif
+#ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
+#define MOUNTFAIL_MAGIC_NUM 0x77665527
+#endif
+#ifdef CONFIG_HUAWEI_DEBUG_MODE
+extern char *saved_command_line;
 #endif
 
 static int restart_mode;
@@ -74,7 +102,12 @@ static void *emergency_dload_mode_addr;
 
 /* Download mode master kill-switch */
 static int dload_set(const char *val, struct kernel_param *kp);
+#ifndef CONFIG_HUAWEI_KERNEL_DEBUG
+/* disable ramdump by default*/
+static int download_mode = 0;
+#else
 static int download_mode = 1;
+#endif
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 static int panic_prep_restart(struct notifier_block *this,
@@ -99,6 +132,33 @@ static void set_dload_mode(int on)
 	}
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+void clear_dload_mode(void)
+{
+	set_dload_mode(0);
+}
+#endif
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+static void clear_bootup_flag(void)
+{
+    /*if the HUAWEI_BOOT_LOG_ADDR can be used, donot map again*/
+    uint32_t *reboot_flag_addr = NULL;
+    if(NULL == boot_log_virt )
+    {
+         reboot_flag_addr = (uint32_t *)ioremap_nocache(HUAWEI_BOOT_LOG_ADDR,HUAWEI_BOOT_LOG_SIZE);
+    }
+    else
+    {
+        reboot_flag_addr = boot_log_virt ;
+    }
+    if(NULL != reboot_flag_addr)
+    {
+        __raw_writel( 0x00000000, reboot_flag_addr);
+        mb();
+    }
+    return;
+}
+#endif
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
@@ -204,6 +264,11 @@ static void __msm_power_off(int lower_pshold)
 static void msm_power_off(void)
 {
 	/* MSM initiated power off, lower ps_hold */
+#ifdef CONFIG_HUAWEI_KERNEL
+	/*clear hardware reset magic number to imem*/
+	__raw_writel(0, HW_RESET_LOG_MAGIC_NUM_ADDR);
+	printk("clear hardware reset magic number when power off\n");
+#endif
 	__msm_power_off(1);
 }
 
@@ -248,6 +313,93 @@ static irqreturn_t resout_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static void qfuse_handle(const char *cmd)
+{
+    char *fuse_data_p = NULL;
+    unsigned int rdata = 0;
+
+    if(NULL == cmd)
+    {
+        return;
+    }
+    
+    //write qfuse magic
+    __raw_writel(QFUSE_MAGIC_NUM, (dload_mode_addr+QFUSE_MAGIC_OFFSET)); /*addr 0x2A03F000 */
+
+    //get r0
+    fuse_data_p = strstr(cmd, "r0=");
+    rdata = 0;
+    if(NULL != fuse_data_p)
+    {
+        fuse_data_p = fuse_data_p+3;
+        if(NULL != fuse_data_p)
+        {
+            rdata = simple_strtoul(fuse_data_p, NULL, 16);
+        }
+    }
+    //write r0
+    pr_err("qfuse_handle r0 = 0x%x\n", rdata);
+    __raw_writel(rdata, (dload_mode_addr+QFUSE_MAGIC_OFFSET+4));
+    pr_err("qfuse_handle dload_mode_addr r0 = 0x%x\n", *((unsigned int*)(dload_mode_addr+QFUSE_MAGIC_OFFSET+4)));
+
+    //get r1
+    fuse_data_p = strstr(cmd, "r1=");
+    rdata = 0;
+    if(NULL != fuse_data_p)
+    {
+        fuse_data_p = fuse_data_p+3;
+        if(NULL != fuse_data_p)
+        {
+            rdata = simple_strtoul(fuse_data_p, NULL, 16);
+        }
+    }
+    //write r1
+    pr_err("qfuse_handle r1 = 0x%x\n", rdata);
+    __raw_writel(rdata, (dload_mode_addr+QFUSE_MAGIC_OFFSET+8));
+    pr_err("qfuse_handle dload_mode_addr r1 = 0x%x\n", *((unsigned int*)(dload_mode_addr+QFUSE_MAGIC_OFFSET+8)));
+
+    //get r2
+    fuse_data_p = strstr(cmd, "r2=");
+    rdata = 0;
+    if(NULL != fuse_data_p)
+    {
+        fuse_data_p = fuse_data_p+3;
+        if(NULL != fuse_data_p)
+        {
+            rdata = simple_strtoul(fuse_data_p, NULL, 16);
+        }
+    }
+
+    //write r2
+    pr_err("qfuse_handle r2 = 0x%x\n", rdata);
+    __raw_writel(rdata, (dload_mode_addr+QFUSE_MAGIC_OFFSET+12));
+    pr_err("qfuse_handle dload_mode_addr r2 = 0x%x\n", *((unsigned int*)(dload_mode_addr+QFUSE_MAGIC_OFFSET+12)));
+
+    //get r3
+    fuse_data_p = strstr(cmd, "r3=");
+    rdata = 0;
+    if(NULL != fuse_data_p)
+    {
+        fuse_data_p = fuse_data_p+3;
+        if(NULL != fuse_data_p)
+        {
+            rdata = simple_strtoul(fuse_data_p, NULL, 16);
+        }
+    }
+    //write r3
+    pr_err("qfuse_handle r3 = 0x%x\n", rdata);
+    __raw_writel(rdata, (dload_mode_addr+QFUSE_MAGIC_OFFSET+16));
+    pr_err("qfuse_handle dload_mode_addr r3 = 0x%x\n", *((unsigned int*)(dload_mode_addr+QFUSE_MAGIC_OFFSET+16)));
+
+    pr_err("qfuse_handle dload_mode_addr magic = 0x%x\n", *((unsigned int*)(dload_mode_addr+QFUSE_MAGIC_OFFSET)));
+
+    //enter recovery mode
+    //__raw_writel(0x77665502, restart_reason); 
+
+    mb();
+}
+#endif
 static void msm_restart_prepare(const char *cmd)
 {
 #ifdef CONFIG_MSM_DLOAD_MODE
@@ -267,8 +419,18 @@ static void msm_restart_prepare(const char *cmd)
 		set_dload_mode(0);
 #endif
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	/*clear hardware reset magic number to imem*/
+	__raw_writel(0, HW_RESET_LOG_MAGIC_NUM_ADDR);
+	printk("clear hardware reset magic number when reboot\n");
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+	__raw_writel(RESTART_FLAG_MAGIC_NUM, restart_flag_addr);
+#endif
 	pm8xxx_reset_pwr_off(1);
-
+#ifdef CONFIG_HUAWEI_FEATURE_NFF
+    clear_bootup_flag();
+#endif     
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (get_dload_mode() || (cmd != NULL && cmd[0] != '\0'))
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
@@ -288,6 +450,31 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x6f656d00 | code, restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+#ifdef CONFIG_HUAWEI_KERNEL
+		} else if (!strncmp(cmd, "huawei_dload", 12)) {
+			__raw_writel(0x77665503, restart_reason);
+        //Added adb reboot sdupdate/usbupdate command support
+        } else if(!strncmp(cmd, SD_UPDATE_RESET_FLAG, strlen(SD_UPDATE_RESET_FLAG))) {
+            __raw_writel(SDUPDATE_FLAG_MAGIC_NUM, restart_reason);
+        } else if(!strncmp(cmd, USB_UPDATE_RESET_FLAG, strlen(USB_UPDATE_RESET_FLAG))) {
+            __raw_writel(USBUPDATE_FLAG_MAGIC_NUM, restart_reason);
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+		}  else if (!strncmp(cmd, "huawei_rtc", 10)) {
+					   __raw_writel(0x77665524, restart_reason);
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+		}  else if (!strncmp(cmd, "emergency_restart", 17)) {
+			printk("do nothing\n");
+#endif
+#ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
+		} else if (!strncmp(cmd, "mountfail", strlen("mountfail"))) {
+		    __raw_writel(MOUNTFAIL_MAGIC_NUM, restart_reason);
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+        } else if(!strncmp(cmd, "qfuse", 5)) {
+            qfuse_handle(cmd);
+#endif
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
@@ -358,6 +545,13 @@ static int __init msm_restart_init(void)
 	dload_mode_addr = MSM_IMEM_BASE + DLOAD_MODE_ADDR;
 	emergency_dload_mode_addr = MSM_IMEM_BASE +
 		EMERGENCY_DLOAD_MODE_ADDR;
+#ifdef CONFIG_HUAWEI_DEBUG_MODE		
+	if(strstr(saved_command_line,"huawei_debug_mode=1")!=NULL
+	    || strstr(saved_command_line,"emcno=1")!=NULL)
+	{
+		download_mode = 1;
+	}
+#endif
 	set_dload_mode(download_mode);
 #endif
 	msm_tmr0_base = msm_timer_get_timer0_base();

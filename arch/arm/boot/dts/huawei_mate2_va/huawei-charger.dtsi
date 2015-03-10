@@ -1,0 +1,23 @@
+&soc{
+    i2c@f9925000 {
+       charger: ti,bq2419x {
+                cell-index = <0>;
+                compatible = "ti,bq2419x_charger";
+                reg = <0x6B>;
+                max_charger_currentmA = <1880>;
+                max_charger_voltagemV = <4200>;
+                max_cin_limit_currentmA = <2000>;
+                gpio = <114>;
+                gpio_int = <67>;
+       };
+   };
+   
+   i2c@f9925000 {
+       battery: ti,bq27510 {
+                compatible = "ti,bq27510_battery";
+                reg = <0x55>;
+                gpio = <27>;
+                config_name = "BQ27510_SONY_3340";
+       };
+   };
+};

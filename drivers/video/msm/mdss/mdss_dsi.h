@@ -20,6 +20,7 @@
 #include "mdss_panel.h"
 #include "mdss_io_util.h"
 #include "mdss_dsi_cmd.h"
+#include <linux/msm_mdp.h>
 
 #define MMSS_SERDES_BASE_PHY 0x04f01000 /* mmss (De)Serializer CFG */
 
@@ -258,11 +259,15 @@ struct mdss_dsi_ctrl_pdata {
 	struct clk *byte_clk;
 	struct clk *esc_clk;
 	struct clk *pixel_clk;
+#ifdef CONFIG_HUAWEI_LCD
+	bool operator_logo;
+#endif
 	u8 ctrl_state;
 	int panel_mode;
 	int irq_cnt;
 	int rst_gpio;
 	int disp_en_gpio;
+	int disp_en_gpio_vsn;
 	int disp_te_gpio;
 	int mode_gpio;
 	int disp_te_gpio_requested;
@@ -279,12 +284,29 @@ struct mdss_dsi_ctrl_pdata {
 	u32 byte_clk_rate;
 	struct dss_module_power power_data;
 	u32 dsi_irq_mask;
+	u32 dsi_mdp_clk_mask;
 	struct mdss_hw *dsi_hw;
 	struct mdss_panel_recovery *recovery;
 
 	struct dsi_panel_cmds on_cmds;
 	struct dsi_panel_cmds off_cmds;
 
+#ifdef CONFIG_FB_AUTO_CABC
+	struct dsi_panel_cmds dsi_panel_cabc_ui_cmds;
+	struct dsi_panel_cmds dsi_panel_cabc_video_cmds;
+
+//remove dynamic gamma
+#endif
+#ifdef CONFIG_FB_DISPLAY_INVERSION
+	u32 inversion_state;
+	struct dsi_panel_cmds dsi_panel_inverse_on_cmds;
+	struct dsi_panel_cmds dsi_panel_inverse_off_cmds;
+#endif
+#ifdef CONFIG_HUAWEI_LCD
+	u32 first_wake_up;
+	struct dsi_panel_cmds temporary_pwm_cmds;
+	struct dsi_panel_cmds normal_pwm_cmds;
+#endif
 	struct dcs_cmd_list cmdlist;
 	struct completion dma_comp;
 	struct completion mdp_comp;
@@ -295,11 +317,27 @@ struct mdss_dsi_ctrl_pdata {
 	int mdp_busy;
 	struct mutex mutex;
 	struct mutex cmd_mutex;
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	struct mutex put_mutex;
+#endif
 	bool ulps;
 
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
+#ifdef CONFIG_HUAWEI_LCD
+	bool esd_check_enable;
+	u32 panel_esd_cmd[10];
+	u32 panel_esd_cmd_value[10];
+	u32 panel_esd_cmd_len;
+#endif
+#ifdef CONFIG_HUAWEI_LCD
+	struct dsi_panel_cmds dot_inversion_cmds;
+	struct dsi_panel_cmds column_inversion_cmds;
+#endif
+
+#ifdef CONFIG_HUAWEI_LCD
+	u32 long_read_flag;
+#endif
 };
 
 struct dsi_status_data {
@@ -406,4 +444,8 @@ static inline struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl_by_index(int ndx)
 
 	return ctrl_list[ndx];
 }
+
+#ifdef CONFIG_HUAWEI_LCD
+int panel_check_live_status(struct mdss_dsi_ctrl_pdata *ctrl);
+#endif
 #endif /* MDSS_DSI_H */

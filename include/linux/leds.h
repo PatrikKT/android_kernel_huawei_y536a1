@@ -22,11 +22,21 @@ struct device;
  * LED Core
  */
 
+#ifdef CONFIG_HUAWEI_KERNEL
+enum led_brightness {
+	LED_OFF		= 0,
+	LED_LOW		= 50,
+	LED_MEDIUM		= 100,
+	LED_HIGH		= 150,
+	LED_FULL		= 255,
+};
+#else
 enum led_brightness {
 	LED_OFF		= 0,
 	LED_HALF	= 127,
 	LED_FULL	= 255,
 };
+#endif
 
 struct led_classdev {
 	const char		*name;

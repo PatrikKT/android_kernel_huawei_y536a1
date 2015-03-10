@@ -418,6 +418,13 @@ static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
 {
 	struct mdss_mdp_cmd_ctx *ctx;
 	unsigned long flags;
+	/*add qcom patch to solve the cmd esd issue
+	 *refactor command mode vsync control logic
+	 *Current logic is prone to corner case when mdss_mdp_remove_vsync_handler
+	 *is called twice: once from mdss_mdp_cmd_stop and again from vsync ctrl
+	 *logic. Need to properly identify the second call and avoid resetting the
+	 *rdptr ticks which prevent from clocks being turned off properly.*/
+	bool enable_rdptr = false;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -429,12 +436,14 @@ static int mdss_mdp_cmd_add_vsync_handler(struct mdss_mdp_ctl *ctl,
 	if (!handle->enabled) {
 		handle->enabled = true;
 		list_add(&handle->list, &ctx->vsync_handlers);
-		if (!handle->cmd_post_flush)
-			ctx->vsync_enabled = 1;
+		
+		enable_rdptr = !handle->cmd_post_flush;
+		if (enable_rdptr)
+			ctx->vsync_enabled++;
 	}
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
-	if (!handle->cmd_post_flush)
+	if (enable_rdptr)
 		mdss_mdp_cmd_clk_on(ctx);
 
 	return 0;
@@ -446,9 +455,12 @@ static int mdss_mdp_cmd_remove_vsync_handler(struct mdss_mdp_ctl *ctl,
 
 	struct mdss_mdp_cmd_ctx *ctx;
 	unsigned long flags;
-	struct mdss_mdp_vsync_handler *tmp;
-	int num_rdptr_vsync = 0;
-
+	/*add qcom patch to solve the cmd esd issue
+	 *refactor command mode vsync control logic
+	 *Current logic is prone to corner case when mdss_mdp_remove_vsync_handler
+	 *is called twice: once from mdss_mdp_cmd_stop and again from vsync ctrl
+	 *logic. Need to properly identify the second call and avoid resetting the
+	 *rdptr ticks which prevent from clocks being turned off properly.*/
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
 		pr_err("%s: invalid ctx\n", __func__);
@@ -460,14 +472,13 @@ static int mdss_mdp_cmd_remove_vsync_handler(struct mdss_mdp_ctl *ctl,
 	if (handle->enabled) {
 		handle->enabled = false;
 		list_del_init(&handle->list);
-	}
-	list_for_each_entry(tmp, &ctx->vsync_handlers, list) {
-		if (!tmp->cmd_post_flush)
-			num_rdptr_vsync++;
-	}
-	if (!num_rdptr_vsync) {
-		ctx->vsync_enabled = 0;
-		ctx->rdptr_enabled = VSYNC_EXPIRE_TICK;
+
+		if (!handle->cmd_post_flush) {
+			if (ctx->vsync_enabled)
+				ctx->vsync_enabled--;
+			else
+				WARN(1, "unbalanced vsync disable");
+		}
 	}
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 	return 0;
@@ -564,6 +575,10 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_ON, NULL);
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
+		/*schedule the esd delay work*/
+#ifdef CONFIG_HUAWEI_LCD
+		mdss_dsi_status_check_ctl(ctl->mfd,true);
+#endif
 	}
 
 	mdss_mdp_cmd_set_partial_roi(ctl);
@@ -605,7 +620,10 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 		pr_err("invalid ctx\n");
 		return -ENODEV;
 	}
-
+	/*cancel the esd delay work*/
+#ifdef CONFIG_HUAWEI_LCD
+	mdss_dsi_status_check_ctl(ctl->mfd,false);
+#endif
 	list_for_each_entry_safe(handle, tmp, &ctx->vsync_handlers, list)
 		mdss_mdp_cmd_remove_vsync_handler(ctl, handle);
 
@@ -633,6 +651,8 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 					mdss_mdp_irq_disable
 						(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 								ctx->pp_num);
+					/*add the qcom patch to solve the cmd lcd esd issue*/
+					schedule_work(&ctx->clk_work);
 					ctx->rdptr_enabled = 0;
 				}
 			}

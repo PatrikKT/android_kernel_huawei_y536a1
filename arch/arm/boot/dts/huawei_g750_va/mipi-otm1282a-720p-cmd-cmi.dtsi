@@ -1,0 +1,182 @@
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/* modify parameters of panel */
+
+/ {
+	mipi_otm1282a_720p_cmd_cmi {
+		compatible = "huawei,lcd_panel_id0";
+		label = "mipi_otm1282a_720p_cmd_cmi";
+		status = "disable";
+		qcom,dsi-ctrl-phandle = <&mdss_dsi0>;
+		qcom,bl-enable-gpio = <&msmgpio 22 0>;
+		qcom,enable-gpio = <&msmgpio 23 0>;
+		qcom,te-gpio = <&msmgpio 24 0>;
+		qcom,rst-gpio = <&msmgpio 25 0>;
+		qcom,mdss-pan-res = <720 1280>;
+		qcom,mdss-pan-bpp = <24>;
+		qcom,mdss-pan-dest = "display_1";
+		qcom,mdss-pan-porch-values = <164 8 140 1 1 6>;
+		qcom,mdss-pan-underflow-clr = <0xff>;
+		qcom,mdss-pan-bl-ctrl = "bl_ctrl_dcs";
+		qcom,mdss-pan-bl-levels = <1 255>;
+		qcom,mdss-pan-dsi-mode = <1>;
+		qcom,mdss-vsync-enable = <1>;
+		qcom,mdss-hw-vsync-mode = <1>;
+		qcom,mdss-pan-dsi-h-pulse-mode = <1>;
+		qcom,mdss-pan-dsi-h-power-stop = <0 0 0>;
+		qcom,mdss-pan-dsi-bllp-power-stop = <1 1>;
+		qcom,mdss-pan-dsi-traffic-mode = <2>;
+		qcom,mdss-pan-dsi-dst-format = <8>;
+		qcom,mdss-pan-insert-dcs-cmd = <1>;
+		qcom,mdss-pan-wr-mem-continue = <0x3c>;
+		qcom,mdss-pan-wr-mem-start = <0x2c>;
+		qcom,mdss-pan-te-sel = <1>;
+		qcom,mdss-pan-dsi-vc = <0>;
+		qcom,mdss-pan-dsi-rgb-swap = <0>;
+		qcom,mdss-pan-dsi-data-lanes = <1 1 1 1>; /* 4 lanes */
+		qcom,mdss-pan-dsi-dlane-swap = <0>;
+		qcom,mdss-pan-dsi-t-clk = <0x2c 0x20>;
+		qcom,mdss-pan-dsi-stream = <0>;
+		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
+		qcom,mdss-pan-dsi-dma-tr = <0x04>;
+		qcom,mdss-pan-dsi-frame-rate = <60>;
+		qcom,panel-phy-regulatorSettings = [07 09 03 00  /* Regualotor settings */
+						    20 00 01];
+		qcom,panel-phy-timingSettings = [7d 25 1d 00 37 33
+						    22 27 1e 03 04 00];
+		qcom,panel-phy-strengthCtrl = [ff 06];
+		qcom,panel-phy-bistCtrl = [00 00 b1 ff           /* BIST Ctrl settings */
+					   00 00];
+		qcom,panel-phy-laneConfig = [00 00 00 00 00 00 00 01 97 /* lane0 config */
+					     00 00 00 00 05 00 00 01 97 /* lane1 config */
+					     00 00 00 00 0a 00 00 01 97 /* lane2 config */
+					     00 00 00 00 0f 00 00 01 97 /* lane3 config */
+					     00 c0 00 00 00 00 00 01 bb]; /* Clk ln config */
+		qcom,panel-on-cmds = [29 01 00 00 00 00 04 FF 12 82 01
+					29 01 00 00 00 00 02 00 80
+					29 01 00 00 00 00 03 FF 12 82
+					29 01 00 00 00 00 02 00 B0
+					29 01 00 00 00 00 02 CA 02
+					29 01 00 00 10 00 02 00 00
+					29 01 00 00 00 00 02 1C 00
+					29 01 00 00 00 00 02 00 A0
+					29 01 00 00 00 00 03 C1 00 EE
+					29 01 00 00 00 00 02 00 90
+					29 01 00 00 00 00 02 A5 00
+					29 01 00 00 00 00 02 00 B4
+					29 01 00 00 00 00 02 C0 40
+					29 01 00 00 00 00 02 00 82
+					29 01 00 00 00 00 02 A5 02
+					29 01 00 00 00 00 02 00 80
+					29 01 00 00 00 00 0B C0 00 8B 00 0A 0A 00 8B 0A 0A 00
+					29 01 00 00 00 00 02 00 A0
+					29 01 00 00 00 00 0D C0 00 00 00 03 00 1E 06 00 00 00 00 00
+					29 01 00 00 00 00 02 00 80
+					29 01 00 00 00 00 09 C2 82 03 00 00 00 00 00 00
+					29 01 00 00 00 00 02 00 90
+					29 01 00 00 00 00 10 C2 87 0C 01 07 06 86 0C 01 07 06 85 0D 01 07 06
+					29 01 00 00 00 00 02 00 A0
+					29 01 00 00 00 00 10 C2 84 0D 01 07 06 87 0B 01 07 06 86 0B 01 07 06
+					29 01 00 00 00 00 02 00 B0
+					29 01 00 00 00 00 0B C2 85 0D 01 07 06 84 0D 01 07 06
+					29 01 00 00 00 00 02 00 EA
+					29 01 00 00 00 00 04 C2 22 02 11
+					29 01 00 00 00 00 02 00 F9
+					29 01 00 00 00 00 05 C2 08 00 0C 01
+					29 01 00 00 00 00 02 00 D0
+					29 01 00 00 00 00 0D C0 00 00 00 03 00 1E 06 00 00 00 00 00
+					29 01 00 00 00 00 02 00 80 
+					29 01 00 00 00 00 09 C3 82 03 00 00 00 00 00 00
+					29 01 00 00 00 00 02 00 90
+					29 01 00 00 00 00 10 C3 87 0C 01 07 06 86 0c 01 07 06 85 0d 01 07 06
+					29 01 00 00 00 00 02 00 A0 
+					29 01 00 00 00 00 10 C3 84 0D 01 07 06 87 0B 01 07 06 86 0B 01 07 06
+					29 01 00 00 00 00 02 00 B0
+					29 01 00 00 00 00 0B C3 85 0D 01 07 06 84 0D 01 07 06
+					29 01 00 00 00 00 02 00 EA
+					29 01 00 00 00 00 04 C3 22 02 11
+					29 01 00 00 00 00 02 00 90
+					29 01 00 00 00 00 10 CB 00 00 00 00 00 00 00 00 00 00 00 00 00 F0 F0
+					29 01 00 00 00 00 02 00 A0 
+					29 01 00 00 00 00 10 CB F0 00 00 00 00 C0 00 F0 00 00 00 00 00 00 00
+					29 01 00 00 00 00 02 00 B0
+					29 01 00 00 00 00 10 CB 00 00 00 00 00 00 00 00 50 50 C0 00 00 C0 00
+					29 01 00 00 00 00 02 00 C0
+					29 01 00 00 00 00 11 CB 14 04 04 04 04 04 04 04 04 04 14 04 04 14 3B 3B
+					29 01 00 00 00 00 02 00 D0 
+					29 01 00 00 00 00 10 CB 3B 14 04 04 30 35 04 F7 04 14 14 14 14 04 04
+					29 01 00 00 00 00 02 00 E0 
+					29 01 00 00 00 00 10 CB 04 04 04 04 04 04 04 04 15 15 07 14 14 00 00
+					29 01 00 00 00 00 02 00 F0
+					29 01 00 00 00 00 0E CB 00 00 00 00 00 C0 00 00 00 00 00 00 00
+					29 01 00 00 00 00 02 00 80 
+					29 01 00 00 00 00 0B CC 0F 03 04 05 06 07 08 09 0A 10
+					29 01 00 00 00 00 02 00 B0
+					29 01 00 00 00 00 0B CC 0F 0A 09 08 07 06 05 04 03 10
+					29 01 00 00 00 00 02 00 8A 
+					29 01 00 00 00 00 02 CD 0B
+					29 01 00 00 00 00 02 00 A0
+					29 01 00 00 00 00 10 CD 06 07 08 09 14 2D 14 2D 2D 2D 2D 2D 2D 2D 2D
+					29 01 00 00 00 00 02 00 B0
+					29 01 00 00 00 00 10 CD 2D 2D 2D 15 12 2C 0C 0B 13 0E 0F 10 2D 2D 2D
+					29 01 00 00 00 00 02 00 C0
+					29 01 00 00 00 00 0B CD 2D 2D 2D 27 28 29 2A 2B 1D 2D
+					29 01 00 00 00 00 02 00 0D
+					29 01 00 00 00 00 10 CD 02 03 04 05 14 2D 14 2D 2D 2D 2D 2D 2D 2D 2D
+					29 01 00 00 00 00 02 00 E0
+					29 01 00 00 00 00 10 CD 2D 2D 2D 15 12 2C 0C 0B 13 0E 0F 10 2D 2D 2D
+					29 01 00 00 00 00 02 00 F0
+					29 01 00 00 00 00 0B CD 2D 2D 2D 27 28 29 2A 2B 1D 2D
+					29 01 00 00 00 00 02 00 90
+					29 01 00 00 00 00 0B C5 92 D6 B5 AF B2 AA 44 22 20 88
+					29 01 00 00 00 00 02 00 A0
+					29 01 00 00 00 00 0B C5 92 D6 B5 AF B2 AA 44 22 20 88
+					29 01 00 00 00 00 02 00 00
+					29 01 00 00 00 00 03 D8 38 38
+					29 01 00 00 00 00 19 E1 01 24 2D 3B 45 4C 5A 6C 78 88 93 9A 60 5B 56 4C 3C 2F 25 22 19 16 13 0F
+					29 01 00 00 00 00 19 E2 01 24 2D 3B 45 4C 5A 6C 78 88 93 9A 60 5B 56 4C 3C 2F 25 22 19 16 13 0F
+					29 01 00 00 00 00 19 E3 01 24 2D 3B 45 4C 5A 6C 78 88 93 9A 60 5B 56 4C 3C 2F 25 22 19 16 13 0F
+					29 01 00 00 00 00 19 E4 01 24 2D 3B 45 4C 5A 6C 78 88 93 9A 60 5B 56 4C 3C 2F 25 22 19 16 13 0F
+					29 01 00 00 00 00 19 E5 01 24 2D 3B 45 4C 5A 6C 78 88 93 9A 60 5B 56 4C 3C 2F 25 22 19 16 13 0F
+					29 01 00 00 00 00 19 E6 01 24 2D 3B 45 4C 5A 6C 78 88 93 9A 60 5B 56 4C 3C 2F 25 22 19 16 13 0F
+					29 01 00 00 00 00 02 00 00
+					29 01 00 00 00 00 02 C6 10
+					29 01 00 00 00 00 02 00 97
+					29 01 00 00 00 00 03 C5 22 20
+					29 01 00 00 00 00 02 00 A7 
+					29 01 00 00 00 00 03 C5 22 20
+					29 01 00 00 00 00 02 00 83
+					29 01 00 00 00 00 02 C4 02
+					29 01 00 00 00 00 02 00 80 
+					29 01 00 00 00 00 02 A5 0C
+					29 01 00 00 00 00 02 00 B3
+					29 01 00 00 00 00 02 C0 33
+					29 01 00 00 00 00 02 00 80
+					29 01 00 00 00 00 02 C4 04
+					29 01 00 00 00 00 02 00 81
+					29 01 00 00 00 00 02 C4 0F
+					29 01 00 00 00 00 02 00 80
+					29 01 00 00 00 00 03 FF 00 00
+					29 01 00 00 00 00 02 00 00
+					29 01 00 00 00 00 04 FF 00 00 00
+					29 01 00 00 00 00 02 55 01
+					29 01 00 00 00 00 02 53 24 					
+					29 01 00 00 00 00 02 35 00
+					05 01 00 00 78 00 02 11 00
+					29 01 00 00 16 00 02 29 00];
+
+		qcom,on-cmds-dsi-state = "DSI_LP_MODE";
+		qcom,panel-off-cmds = [05 01 00 00 16 00 02 28 00
+					05 01 00 00 78 00 02 10 00];
+		qcom,off-cmds-dsi-state = "DSI_HS_MODE";
+	};
+};

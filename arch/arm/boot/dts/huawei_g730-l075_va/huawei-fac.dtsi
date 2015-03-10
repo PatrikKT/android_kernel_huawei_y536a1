@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI G730-L075";
+                  fac,hardware_ver = "HL2G730L075M";
+		  fac,software_ver = "MSM8926_G730-L075_VA";
+                  status = "ok";
+        };
+};

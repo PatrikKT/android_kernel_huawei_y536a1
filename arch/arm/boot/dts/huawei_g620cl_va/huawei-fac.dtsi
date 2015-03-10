@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI C8817L";
+                  fac,hardware_ver = "HL1G620L75M";
+		  fac,software_ver = "MSM8926_C8817L_VA";
+                  status = "ok";
+        };
+};

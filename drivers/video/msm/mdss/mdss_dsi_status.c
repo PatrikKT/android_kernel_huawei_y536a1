@@ -32,7 +32,7 @@
 
 #define STATUS_CHECK_INTERVAL_MS 5000
 #define STATUS_CHECK_INTERVAL_MIN_MS 200
-#define DSI_STATUS_CHECK_DISABLE 1
+#define DSI_STATUS_CHECK_DISABLE 0
 
 static uint32_t interval = STATUS_CHECK_INTERVAL_MS;
 static uint32_t dsi_status_disable = DSI_STATUS_CHECK_DISABLE;
@@ -63,6 +63,43 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 	pdsi_status->mfd->mdp.check_dsi_status(work, interval);
 }
 
+/*
+ * sheduled based on mipi timing start
+ * cancelled based on mipi timing stop
+ */
+#ifdef CONFIG_HUAWEI_LCD
+void mdss_dsi_status_check_ctl(struct msm_fb_data_type *mfd, int sheduled)
+{
+	if(!mfd)
+	{
+		pr_err("%s: mfd not available\n", __func__);
+		return ;
+	}	
+	if(!pstatus_data)
+	{
+		pr_err("%s: pstatus_data not available\n", __func__);
+		return ;
+	}
+
+	if (dsi_status_disable) {
+		pr_info("%s: DSI status disabled\n", __func__);
+		return ;
+	}
+
+	pr_debug("%s:scheduled=%d\n",__func__,sheduled);
+	pstatus_data->mfd = mfd;
+	if(sheduled) 
+	{
+		schedule_delayed_work(&pstatus_data->check_status,
+		msecs_to_jiffies(interval));
+	}
+	else
+	{	
+		//return until last work finish 
+		cancel_delayed_work_sync(&pstatus_data->check_status);
+	}
+}
+#else
 /*
  * fb_event_callback() - Call back function for the fb_register_client()
  *			 notifying events
@@ -114,6 +151,8 @@ static int fb_event_callback(struct notifier_block *self,
 	}
 	return 0;
 }
+#endif
+
 
 static int param_dsi_status_disable(const char *val, struct kernel_param *kp)
 {
@@ -160,6 +199,7 @@ int __init mdss_dsi_status_init(void)
 		return -ENOMEM;
 	}
 
+#ifndef CONFIG_HUAWEI_LCD
 	pstatus_data->fb_notifier.notifier_call = fb_event_callback;
 
 	rc = fb_register_client(&pstatus_data->fb_notifier);
@@ -169,6 +209,7 @@ int __init mdss_dsi_status_init(void)
 		kfree(pstatus_data);
 		return -EPERM;
 	}
+#endif
 
 	pr_info("%s: DSI status check interval:%d\n", __func__,	interval);
 
@@ -181,7 +222,9 @@ int __init mdss_dsi_status_init(void)
 
 void __exit mdss_dsi_status_exit(void)
 {
+#ifndef CONFIG_HUAWEI_LCD
 	fb_unregister_client(&pstatus_data->fb_notifier);
+#endif
 	cancel_delayed_work_sync(&pstatus_data->check_status);
 	kfree(pstatus_data);
 	pr_debug("%s: DSI ctrl status work queue removed\n", __func__);

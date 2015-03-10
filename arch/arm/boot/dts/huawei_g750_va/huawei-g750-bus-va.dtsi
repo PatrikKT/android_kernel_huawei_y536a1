@@ -1,0 +1,6 @@
+ / {
+        huawei_bus_info {
+                  compatible = "huawei,hw_bus_info";
+                  status = "ok";
+        };
+};

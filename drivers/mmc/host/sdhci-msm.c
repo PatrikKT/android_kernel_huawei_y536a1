@@ -1102,6 +1102,78 @@ static int sdhci_msm_dt_parse_vreg_info(struct device *dev,
 	return ret;
 }
 
+#ifdef CONFIG_HUAWEI_KERNEL
+static int sdhci_msm_set_detect_info(struct sdhci_msm_pltfm_data *pdata)
+{
+	int ret = 0;
+	char prop_name[MAX_PROP_SIZE] = {0};
+	struct device_node *np = NULL;
+
+	if(!pdata)
+	{
+		/*if pdata is NULL,return 0.*/
+		return ret;
+	}
+
+	/*try to get the device node huawei-detect-info.*/
+	np = of_find_compatible_node(NULL,NULL,"huawei-detect-info");
+	if(!np)
+	{
+		/*if np is NULL,return 0.*/
+		return ret;
+	}
+
+	snprintf(prop_name, MAX_PROP_SIZE,
+			"%s", "huawei,voltage-always-on");
+	if (of_get_property(np, prop_name, NULL))
+	{
+		pdata->vreg_data->vdd_data->is_always_on = true;
+		pdata->vreg_data->vdd_io_data->is_always_on = true;
+		ret = 1;
+	}
+	else
+	{	ret = 0;
+		return ret;
+	}
+	return ret;
+}
+#endif
+#ifdef CONFIG_HUAWEI_KERNEL
+static int sdhci_msm_set_gpio_info(struct sdhci_msm_pltfm_data *pdata)
+{
+	int ret = 0;
+	char prop_name[MAX_PROP_SIZE] = {0};
+	struct device_node *np = NULL;
+
+	if(!pdata)
+	{
+		/*if pdata is NULL,return 0.*/
+		return ret;
+	}
+
+	/*try to get the device node huawei-gpio-info.*/
+	np = of_find_compatible_node(NULL,NULL,"huawei-gpio-info");
+	if(!np)
+	{
+		/*if np is NULL,return 0.*/
+		return ret;
+	}
+
+	snprintf(prop_name, MAX_PROP_SIZE,
+			"%s", "huawei,voltage-active-high");
+	if (of_get_property(np, prop_name, NULL))
+	{
+		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
+		ret = 1;
+	}
+	else
+	{
+		ret = 0;
+	}
+
+	return ret;
+}
+#endif
 /* GPIO/Pad data extraction */
 static int sdhci_msm_dt_get_pad_pull_info(struct device *dev, int id,
 		struct sdhci_msm_pad_pull_data **pad_pull_data)
@@ -1824,8 +1896,32 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
 		goto out;
 	}
 
+	/*L21 should be powered up before L18 when resume and
+	 *L18 should be powered down before L21 when suspend.
+	 */
+#ifdef CONFIG_HUAWEI_KERNEL
+	if(pdata->nonremovable != true)
+	{
+		if(enable)
+		{
+			vreg_table[0] = curr_slot->vdd_io_data;
+			vreg_table[1] = curr_slot->vdd_data;
+		}
+		else
+		{
+			vreg_table[0] = curr_slot->vdd_data;
+			vreg_table[1] = curr_slot->vdd_io_data;
+		}
+	}
+	else
+	{
+		vreg_table[0] = curr_slot->vdd_data;
+		vreg_table[1] = curr_slot->vdd_io_data;
+	}
+#else
 	vreg_table[0] = curr_slot->vdd_data;
 	vreg_table[1] = curr_slot->vdd_io_data;
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(vreg_table); i++) {
 		if (vreg_table[i]) {
@@ -2664,6 +2760,16 @@ static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 		}
 
 		msm_host->pdata = sdhci_msm_populate_pdata(&pdev->dev);
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(sdhci_msm_set_gpio_info(msm_host->pdata))
+		{
+			pr_info("the voltage of gpio is high when insert the sdcard.\n");
+		}
+		else
+		{
+			pr_info("the voltage of gpio is low when insert the sdcard.\n");
+		}
+#endif
 		if (!msm_host->pdata) {
 			dev_err(&pdev->dev, "DT parsing error\n");
 			goto pltfm_free;
@@ -2908,6 +3014,16 @@ static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 	init_completion(&msm_host->pwr_irq_completion);
 
 	if (gpio_is_valid(msm_host->pdata->status_gpio)) {
+#ifdef CONFIG_HUAWEI_KERNEL
+		if(sdhci_msm_set_detect_info(msm_host->pdata))
+		{
+			pr_info("use special sdcard slot.\n");
+		}
+		else
+		{
+			pr_info("use common sdcard slot.\n");
+		}
+#endif
 		ret = mmc_cd_gpio_request(msm_host->mmc,
 				msm_host->pdata->status_gpio);
 		if (ret) {

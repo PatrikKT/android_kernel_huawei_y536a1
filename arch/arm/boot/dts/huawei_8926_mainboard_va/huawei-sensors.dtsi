@@ -1,0 +1,11 @@
+ / {
+        huawei_sensor_info {
+                  compatible = "huawei,hw_sensor_info";
+                  status = "ok";
+        };
+        adsp_sensor_info {
+                  compatible = "huawei,hw_adsp_info";
+                  product_name = "MAIN_BOARD";
+        };
+
+};

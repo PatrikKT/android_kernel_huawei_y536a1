@@ -1,0 +1,23 @@
+
+/include/ "mipi-nt35520-720p-cmd-tianma.dtsi"
+/include/ "mipi-nt35520-720p-cmd-boe.dtsi"
+
+/include/ "default_lcd.dtsi"
+
+ / {
+	
+	mipi_otm1282a_720p_cmd_cmi{
+		status = "disable";
+	};
+	mipi_nt35520_720p_cmd_tianma{
+		status = "ok";
+	};
+
+	mipi_nt35520_720p_cmd_boe{
+		status = "ok";
+	};
+	default_lcd {	
+		status = "ok";
+	};
+	
+};

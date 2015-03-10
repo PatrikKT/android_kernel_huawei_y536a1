@@ -1,0 +1,9 @@
+ / {
+        huawei_fac_info {
+                  compatible = "huawei,hw_fac_info";
+                  fac,product_name = "HUAWEI G730-L073";
+                  fac,hardware_ver = "HL1G730L073M";
+		  fac,software_ver = "MSM8926_G730-L073_VA";
+                  status = "ok";
+        };
+};

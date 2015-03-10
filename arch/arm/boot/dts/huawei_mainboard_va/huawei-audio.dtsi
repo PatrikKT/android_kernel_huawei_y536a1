@@ -1,0 +1,37 @@
+/ {
+    huawei_audio_info {
+        compatible = "huawei,hw_audio_info";
+        product-identifier = "g750c";
+        codec-type = "wcd9306";
+        builtin-master-mic-exist;
+        builtin-2nd-mic-exist;
+        builtin-error-mic-exist;
+        hand_held_aanc_mic_strategy;
+        hand_held_dual_mic_strategy;
+        status = "ok";
+        aud_param_ver = "G750_C00_audio_B02";
+        product-btsco-nrec-adapt;
+        loud_speaker_error_mic_strategy;
+    };
+};
+
+&soc {
+    sound {
+        huawei,audio-routing =
+            "RX_BIAS", "MCLK",
+            "LDO_H", "MCLK",
+            "SPK_OUT", "MCLK",
+            "AMIC1", "MIC BIAS1 External",
+            "MIC BIAS1 External", "Handset Mic",
+            "AMIC2", "MIC BIAS2 External",
+            "MIC BIAS2 External", "Headset Mic",
+            "AMIC3", "MIC BIAS1 External",
+            "MIC BIAS1 External", "Analog Mic3",
+            "AMIC4", "MIC BIAS1 External",
+            "MIC BIAS1 External", "Analog Mic4";
+
+        huawei,cdc-mclk-gpios = <&pm8226_gpios 1 0>;
+        huawei,cdc-vdd-spkr-gpios = <&msmgpio 111 0>;
+        huawei,headset-jack-type-NO;
+    };
+};

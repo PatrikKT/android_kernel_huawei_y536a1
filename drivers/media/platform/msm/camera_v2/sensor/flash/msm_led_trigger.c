@@ -15,11 +15,15 @@
 
 #include <linux/module.h>
 #include "msm_led_flash.h"
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+#include <linux/hw_dev_dec.h>
+#endif
 
 #define FLASH_NAME "camera-led-flash"
 
 /*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
+#define CONFIG_MSMB_CAMERA_DEBUG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
 #else
@@ -31,6 +35,14 @@ extern int32_t msm_led_torch_create_classdev(
 
 static enum flash_type flashtype;
 static struct msm_led_flash_ctrl_t fctrl;
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#define LED_OFF 1
+#define LED_ON 0
+#define LED_TORCH_DELAY 200  //time unit = ms
+static bool led_status = LED_ON;
+static int torch_state = 0;
+#endif
 
 static int32_t msm_led_trigger_get_subdev_id(struct msm_led_flash_ctrl_t *fctrl,
 	void *arg)
@@ -59,6 +71,14 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_HUAWEI_KERNEL
+	if((LED_OFF == led_status) && (MSM_CAMERA_LED_TORCH_POWER_NORMAL != cfg->cfgtype))
+	{
+		cfg->cfgtype = MSM_CAMERA_LED_OFF;
+		pr_err("flash can not work.\n");
+	}
+#endif
+
 	switch (cfg->cfgtype) {
 	case MSM_CAMERA_LED_OFF:
 		for (i = 0; i < fctrl->num_sources; i++)
@@ -66,6 +86,7 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 				led_trigger_event(fctrl->flash_trigger[i], 0);
 		if (fctrl->torch_trigger)
 			led_trigger_event(fctrl->torch_trigger, 0);
+              torch_state = 0;
 		break;
 
 	case MSM_CAMERA_LED_LOW:
@@ -111,7 +132,52 @@ static int32_t msm_led_trigger_config(struct msm_led_flash_ctrl_t *fctrl,
 		if (fctrl->torch_trigger)
 			led_trigger_event(fctrl->torch_trigger, 0);
 		break;
+#ifdef CONFIG_HUAWEI_KERNEL		
+	case MSM_CAMERA_LED_TORCH_LOW:
+		if (fctrl->torch_trigger && (torch_state != LED_LOW))
+		{
+			led_trigger_event(fctrl->torch_trigger, 0);
+			msleep(LED_TORCH_DELAY); //delay to avoid issue caused by app, same as below
+			led_trigger_event(fctrl->torch_trigger, LED_LOW);
+			torch_state = LED_LOW;
+			CDBG("%s:%d flash torch_state=LED_LOW \n", __func__, __LINE__);
+		}
+		break;
+	case MSM_CAMERA_LED_TORCH_MEDIUM:
+		if (fctrl->torch_trigger && (torch_state != LED_MEDIUM))
+		{
+			led_trigger_event(fctrl->torch_trigger, 0);
+			msleep(LED_TORCH_DELAY);
+			led_trigger_event(fctrl->torch_trigger, LED_MEDIUM);
+			torch_state = LED_MEDIUM;
+		}
+		break;
+	case MSM_CAMERA_LED_TORCH_LOW_HIGH:
+		if (fctrl->torch_trigger && (torch_state != LED_HIGH))
+		{
+			led_trigger_event(fctrl->torch_trigger, 0);
+			msleep(LED_TORCH_DELAY);
+			led_trigger_event(fctrl->torch_trigger, LED_HIGH);
+			torch_state = LED_HIGH;
+		}
+		break;
 
+	case MSM_CAMERA_LED_TORCH_POWER_NORMAL:
+		pr_err("resume the flash.\n");
+		led_status = LED_ON;
+		break;
+       /* alter the macro value */
+	case MSM_CAMERA_LED_TORCH_POWER_LOW:
+		//need run MSM_CAMERA_LED_OFF to take off the led
+		pr_err("tunn off the flash.\n");
+		led_status = LED_OFF;
+		for (i = 0; i < fctrl->num_sources; i++)
+			if (fctrl->flash_trigger[i])
+				led_trigger_event(fctrl->flash_trigger[i], 0);
+		if (fctrl->torch_trigger)
+			led_trigger_event(fctrl->torch_trigger, 0);
+		break;
+#endif
 	default:
 		rc = -EFAULT;
 		break;
@@ -275,9 +341,14 @@ torch_failed:
 	}
 
 	rc = msm_led_flash_create_v4lsubdev(pdev, &fctrl);
+
 	if (!rc)
 		msm_led_torch_create_classdev(pdev, &fctrl);
 
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+	set_hw_dev_flag(DEV_I2C_FLASH);
+#endif
+	
 	return rc;
 }
 

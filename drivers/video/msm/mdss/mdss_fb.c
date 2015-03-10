@@ -53,6 +53,11 @@
 
 #include "mdss_fb.h"
 
+#ifdef CONFIG_HUAWEI_KERNEL
+#include "mdss_mdp.h"
+#endif
+#include <linux/hw_lcd_common.h>
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
@@ -93,6 +98,11 @@ static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 
 static int __mdss_fb_display_thread(void *data);
 static int mdss_fb_pan_idle(struct msm_fb_data_type *mfd);
+#ifdef CONFIG_FB_AUTO_CABC
+static int mdss_fb_config_cabc(struct msm_fb_data_type *mfd,struct msmfb_cabc_config cabc_cfg);
+struct msmfb_cabc_config last_cabc_mode;
+u32 last_cabc_setting = false;
+#endif
 static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 					int event, void *arg);
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
@@ -316,6 +326,94 @@ static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 	return ret;
 }
 
+#ifdef CONFIG_HUAWEI_LCD
+static ssize_t mdss_show_inversion_mode(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	int ret;
+	LCD_LOG_DBG("fb%d inversion mode = %d\n", mfd->index, mfd->panel_info->inversion_mode);
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n",mfd->panel_info->inversion_mode);
+	return ret;
+}
+static ssize_t mdss_store_inversion_mode(struct device *dev,
+			     struct device_attribute *attr,const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata = NULL;
+	int ret;
+	char ** last = NULL;
+	u32 temp = 0;
+	
+	temp = simple_strtoul(buf, last, 0);
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if ((pdata) && (pdata->set_inversion_mode)&&(mfd->panel_power_on))
+	{
+		if(temp != mfd->panel_info->inversion_mode)
+		{
+			ret = pdata->set_inversion_mode(pdata,temp);
+			if(ret)
+				return ret;
+		
+			mfd->panel_info->inversion_mode = temp;
+		}
+	}
+	else
+	{
+		LCD_LOG_ERR("This panel maybe sleep ,or can not support set inversion mode\n");
+		return -EINVAL;
+	}
+	return count;
+}
+
+static ssize_t mdss_show_panel_status(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata = NULL;
+	int ret = 0;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if ((pdata) && (pdata->check_panel_status)&&(mfd->panel_power_on))
+	{
+		ret = pdata->check_panel_status(pdata);
+	}
+	else
+	{
+		LCD_LOG_ERR("This panel maybe sleep ,or can not support check panel status\n");
+	}
+	
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n",ret);
+	return ret;
+}
+static ssize_t mdss_show_mipi_crc_check(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata = NULL;
+	int ret = 0;
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if ((pdata) && (pdata->check_panel_mipi_crc)&&(mfd->panel_power_on))
+	{
+		ret = pdata->check_panel_mipi_crc(pdata);
+	}
+	else
+	{
+		LCD_LOG_ERR("This panel maybe sleep ,or can not support checking mipi crc.\n");
+	}
+	
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n",ret);
+	return ret;
+}
+#endif
+
 static void __mdss_fb_idle_notify_work(struct work_struct *work)
 {
 	struct delayed_work *dw = to_delayed_work(work);
@@ -378,6 +476,11 @@ static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
 static DEVICE_ATTR(idle_time, S_IRUGO | S_IWUSR | S_IWGRP,
 	mdss_fb_get_idle_time, mdss_fb_set_idle_time);
 static DEVICE_ATTR(idle_notify, S_IRUGO, mdss_fb_get_idle_notify, NULL);
+#ifdef CONFIG_HUAWEI_LCD
+static DEVICE_ATTR(inversion_mode, S_IRUGO|S_IWUSR|S_IWGRP, mdss_show_inversion_mode, mdss_store_inversion_mode);
+static DEVICE_ATTR(panel_status, S_IRUGO, mdss_show_panel_status, NULL);
+static DEVICE_ATTR(mipi_crc, S_IRUGO, mdss_show_mipi_crc_check, NULL);
+#endif
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
@@ -385,6 +488,11 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_show_blank_event.attr,
 	&dev_attr_idle_time.attr,
 	&dev_attr_idle_notify.attr,
+#ifdef CONFIG_HUAWEI_LCD
+	&dev_attr_inversion_mode.attr,
+	&dev_attr_panel_status.attr,
+	&dev_attr_mipi_crc.attr,
+#endif
 	NULL,
 };
 
@@ -541,6 +649,10 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	}
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
+#if defined(CONFIG_HUAWEI_KERNEL) && defined(CONFIG_DEBUG_FS)
+	/* init lcd debugfs interface */
+	lcd_debugfs_init();
+#endif
 
 	return rc;
 }
@@ -776,6 +888,7 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	int (*update_ad_input)(struct msm_fb_data_type *mfd);
 	u32 temp = bkl_lvl;
 
+	LCD_LOG_DBG("%s: bl_updated = %d, bkl_lvl = %d\n",__func__,mfd->bl_updated,bkl_lvl);
 	if (((!mfd->panel_power_on && mfd->dcm_state != DCM_ENTER)
 		|| !mfd->bl_updated) && !IS_CALIB_MODE_BL(mfd)) {
 		mfd->unset_bl_level = bkl_lvl;
@@ -801,7 +914,13 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			mfd->bl_level = bkl_lvl;
 			return;
 		}
+	#ifdef CONFIG_HUAWEI_KERNEL
+		mdss_dsi_status_check_ctl(mfd,false);
+	#endif
 		pdata->set_backlight(pdata, temp);
+	#ifdef CONFIG_HUAWEI_KERNEL
+		mdss_dsi_status_check_ctl(mfd,true);
+	#endif
 		mfd->bl_level = bkl_lvl;
 		mfd->bl_level_old = temp;
 
@@ -815,6 +934,29 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	}
 }
 
+#ifdef CONFIG_HUAWEI_LCD
+void mdss_fb_update_backlight_wq_handler(struct work_struct *work)
+{
+	struct mdss_panel_data *pdata;
+	struct msm_fb_data_type *mfd;
+	mfd = container_of(to_delayed_work(work), struct msm_fb_data_type, bkl_work);
+	
+	LCD_LOG_DBG("%s: enter\n",__func__);
+	mutex_lock(&mfd->bl_lock);
+	if (mfd->unset_bl_level) {
+		pdata = dev_get_platdata(&mfd->pdev->dev);
+		if ((pdata) && (pdata->set_backlight)) {
+			mfd->bl_level = mfd->unset_bl_level;
+			pdata->set_backlight(pdata, mfd->bl_level);
+			mfd->bl_level_old = mfd->unset_bl_level;
+			mfd->unset_bl_level = 0;
+			LCD_LOG_INFO("%s: set backlight to %d\n",__func__,mfd->bl_level);
+		}
+	}
+	mfd->bl_updated = 1;
+	mutex_unlock(&mfd->bl_lock);
+}
+#else
 void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 {
 	struct mdss_panel_data *pdata;
@@ -831,11 +973,15 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 		}
 	}
 }
+#endif
 
 static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			     int op_enable)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+#ifdef CONFIG_HUAWEI_LCD
+	struct mdss_panel_data *pdata = NULL;
+#endif
 	int ret = 0;
 
 	if (!op_enable)
@@ -844,19 +990,52 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
 
+#ifdef CONFIG_HUAWEI_LCD
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		LCD_LOG_ERR( "mdss_fb_blank_sub: no panel operation detected!\n");
+		return -ENODEV;
+	}
+#endif
+	LCD_LOG_INFO("Enter %s, blank_mode = [%d].\n",__func__,blank_mode);
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		if (!mfd->panel_power_on && mfd->mdp.on_fnc) {
 			ret = mfd->mdp.on_fnc(mfd);
+		/*fix the qcom bug :when display system reset,backlight is off*/
+		#ifdef CONFIG_HUAWEI_LCD
+			if(mfd->panel_info->panel_dead ==true)
+			{
+				pdata->set_backlight(pdata, mfd->bl_level);
+			}
+		#endif
 			if (ret == 0) {
 				mfd->panel_power_on = true;
 				mfd->panel_info->panel_dead = false;
+			#ifdef CONFIG_HUAWEI_LCD
+				mfd->panel_info->inversion_mode = COLUMN_INVERSION;
+			#endif
 			}
 			mutex_lock(&mfd->update.lock);
 			mfd->update.type = NOTIFY_TYPE_UPDATE;
 			mfd->update.is_suspend = 0;
 			mutex_unlock(&mfd->update.lock);
 
+#ifdef CONFIG_HUAWEI_LCD
+			/*writeback panel no need for the following setting, only for lcd panel */
+			if(pdata->panel_info.type != WRITEBACK_PANEL)
+			{
+				/*when lcd resume, firstly we set the saved cabc values if necessary*/
+				#ifdef CONFIG_FB_AUTO_CABC
+				if(true == last_cabc_setting)
+				{
+					mdss_fb_config_cabc(mfd, last_cabc_mode);
+					last_cabc_setting =false;
+					LCD_LOG_INFO("%s:Waiting for LCD resume ,then set cabc mode =%d\n",__func__,last_cabc_mode.mode);
+				}
+				#endif
+			}
+#endif
 			/* Start the work thread to signal idle time */
 			if (mfd->idle_time)
 				schedule_delayed_work(&mfd->idle_notify_work,
@@ -884,21 +1063,26 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->op_enable = false;
 			curr_pwr_state = mfd->panel_power_on;
 			mfd->panel_power_on = false;
-			mfd->bl_updated = 0;
 
+			cancel_delayed_work_sync(&mfd->bkl_work);
+			LCD_LOG_DBG("%s: cancle bkl_delay work \n",__func__);
 			ret = mfd->mdp.off_fnc(mfd);
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
 			else
 				mdss_fb_release_fences(mfd);
 			mfd->op_enable = true;
+			mfd->bl_updated = 0;
+			LCD_LOG_DBG("%s: bl_updated set as 0 when panel off \n",__func__);
+			mfd->frame_updated = 0;
+			LCD_LOG_DBG("%s: frame_updated setted to 0 when panel off \n",__func__);
 			complete(&mfd->power_off_comp);
 		}
 		break;
 	}
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
-
+	LCD_LOG_INFO("Exit %s : blank_mode = [%d]\n",__func__,blank_mode);
 	return ret;
 }
 
@@ -1259,6 +1443,9 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	init_completion(&mfd->power_set_comp);
 	init_waitqueue_head(&mfd->commit_wait_q);
 	init_waitqueue_head(&mfd->idle_wait_q);
+#ifdef CONFIG_HUAWEI_LCD
+	INIT_DELAYED_WORK(&mfd->bkl_work, mdss_fb_update_backlight_wq_handler);
+#endif
 
 	ret = fb_alloc_cmap(&fbi->cmap, 256, 0);
 	if (ret)
@@ -1764,7 +1951,10 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 	struct msm_sync_pt_data *sync_pt_data = &mfd->mdp_sync_pt_data;
 	struct msm_fb_backup_type *fb_backup = &mfd->msm_fb_backup;
 	int ret = -ENOSYS;
-
+	if(!mfd->frame_updated){
+		mfd->frame_updated = 1;
+		LCD_LOG_INFO("%s:begin to display the first frame.\n",__func__);
+	}
 	if (!sync_pt_data->async_wait_fences)
 		mdss_fb_wait_for_fence(sync_pt_data);
 	sync_pt_data->flushed = false;
@@ -1784,7 +1974,14 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 					mfd->index);
 	}
 	if (!ret)
+	{
+#ifdef CONFIG_HUAWEI_LCD
+		LCD_LOG_DBG("%s:%d schedule work delaytime=%d ms\n",__func__,__LINE__,mfd->panel_info->delaytime_before_bl);
+		schedule_delayed_work(&mfd->bkl_work,msecs_to_jiffies(mfd->panel_info->delaytime_before_bl));
+#else
 		mdss_fb_update_backlight(mfd);
+#endif
+	}
 
 	if (IS_ERR_VALUE(ret) || !sync_pt_data->flushed)
 		mdss_fb_signal_timeline(sync_pt_data);
@@ -2092,7 +2289,67 @@ static int mdss_fb_set_lut(struct fb_info *info, void __user *p)
 	mfd->mdp.lut_update(mfd, &cmap);
 	return 0;
 }
+#ifdef CONFIG_FB_AUTO_CABC
+/***************************************************************
+Function: mdss_fb_config_cabc
+Description: Config CABC parameter
+Parameters:
+	struct msm_fb_data_type *mfd: mfd pointer
+	struct msmfb_cabc_config cabc_cfg: CABC config structure
+Return:
+	0: success
+***************************************************************/
+static int mdss_fb_config_cabc(struct msm_fb_data_type *mfd,struct msmfb_cabc_config cabc_cfg)
+{
+	int ret = 0;
+	struct mdss_panel_data *pdata = NULL;
 
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if ((pdata) && (pdata->config_cabc))
+	{
+		ret = pdata->config_cabc(pdata,cabc_cfg);
+	}
+	else
+	{
+		pr_err("This panel can not support auto cabc function\n");
+		ret = EINVAL;
+	}
+
+	return ret;
+}
+#endif
+#ifdef CONFIG_FB_DISPLAY_INVERSION
+/***************************************************************
+Function: msm_fb_set_display_inversion
+Description: ioctrl interface function of display inversion
+Parameters:
+	struct msm_fb_data_type *mfd: mfd pointer
+	unsigned int inversion mode: dispaly inversion mode
+Return:
+	0: success
+	-EINVAL: error number
+***************************************************************/
+/* add power on protect to solve phone crash when do DT-CI testing */
+static int msm_fb_set_display_inversion(struct msm_fb_data_type *mfd, unsigned int inversion_mode)
+{
+	int ret = 0;
+	
+	struct mdss_panel_data *pdata = NULL;
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	
+	if ((pdata) && (pdata->lcd_set_display_inversion) && (mfd->panel_power_on))
+	{
+		ret = pdata->lcd_set_display_inversion(pdata,inversion_mode);
+	}
+	else
+	{
+		LCD_LOG_ERR("This panel maybe sleep ,or can not support display inversion function\n");
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+#endif
 /**
  * mdss_fb_sync_get_fence() - get fence from timeline
  * @timeline:	Timeline to create the fence on
@@ -2281,6 +2538,12 @@ static int mdss_fb_display_commit(struct fb_info *info,
 static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg)
 {
+#ifdef CONFIG_FB_AUTO_CABC
+	struct msmfb_cabc_config cabc_cfg;
+#endif
+#ifdef CONFIG_FB_DISPLAY_INVERSION
+	unsigned int lcd_display_inversion = 0;
+#endif
 	struct msm_fb_data_type *mfd;
 	void __user *argp = (void __user *)arg;
 	struct mdp_page_protection fb_page_protection;
@@ -2319,6 +2582,46 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (ret)
 			return ret;
 		break;
+#ifdef CONFIG_FB_AUTO_CABC
+	case MSMFB_AUTO_CABC:
+		ret = copy_from_user(&cabc_cfg, argp, sizeof(cabc_cfg));
+		if (ret)
+		{
+			LCD_LOG_ERR( "%s:MSMFB_AUTO_CABC ioctl failed \n",
+			 __func__);
+			return ret;
+		}
+
+		/*if lcd is not resumed, save the cabc_mode value, so it will be set when lcd resume*/
+		if(!mfd->panel_power_on)
+		{
+			last_cabc_mode = cabc_cfg;
+			last_cabc_setting =true;
+			LCD_LOG_INFO("%s:MSMFB_AUTO_CABC save last setting \n",
+				__func__);
+		}
+		else
+		{
+			ret = mdss_fb_config_cabc(mfd, cabc_cfg);
+			last_cabc_setting =false;
+		}
+		break;
+#endif
+#ifdef CONFIG_FB_DISPLAY_INVERSION
+	case MSMFB_DISPLAY_INVERSION:
+		ret = copy_from_user(&lcd_display_inversion, argp, sizeof(lcd_display_inversion));
+		if (ret){
+			LCD_LOG_ERR("%s:MSMFB_DISPLAY_INVERSION copy from user failed \n", __func__);
+			return ret;
+		}
+
+		ret = msm_fb_set_display_inversion(mfd, lcd_display_inversion);
+		if (ret){
+			LCD_LOG_ERR("%s:set display inversion is failed and ERROR= %d \n", __func__, ret);
+			return ret;
+		}
+		break;
+#endif
 
 	case MSMFB_BUFFER_SYNC:
 		ret = copy_from_user(&buf_sync, argp, sizeof(buf_sync));
@@ -2340,7 +2643,7 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	case MSMFB_NOTIFY_UPDATE:
 		ret = mdss_fb_notify_update(mfd, argp);
 		break;
-
+	
 	case MSMFB_DISPLAY_COMMIT:
 		ret = mdss_fb_display_commit(info, argp);
 		break;

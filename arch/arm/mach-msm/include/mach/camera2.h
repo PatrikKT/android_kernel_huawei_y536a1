@@ -67,7 +67,7 @@ struct v4l2_subdev_info {
 	uint16_t fmt;
 	uint16_t order;
 };
-
+/*add product name field*/
 struct msm_camera_sensor_board_info {
 	const char *sensor_name;
 	struct msm_camera_slave_info *slave_info;
@@ -81,6 +81,7 @@ struct msm_camera_sensor_board_info {
 	struct msm_sensor_info_t *sensor_info;
 	struct msm_sensor_init_params *sensor_init_params;
 	const char *misc_regulator;
+	const char * product_name;
 };
 
 enum msm_camera_i2c_cmd_type {
@@ -117,6 +118,8 @@ struct eeprom_memory_map_t {
 	struct eeprom_map_t pageen;
 	struct eeprom_map_t poll;
 	struct eeprom_map_t mem;
+	/*add for muti i2c slave*/
+	struct eeprom_map_t slave_addr;
 };
 
 struct msm_camera_power_ctrl_t {

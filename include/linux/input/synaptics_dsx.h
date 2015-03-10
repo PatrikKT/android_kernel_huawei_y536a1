@@ -1,3 +1,5 @@
+/* move to /include/linux/ ,in case conflict with qcom */
+/*Add synaptics new driver "Synaptics DSX I2C V2.0"*/
 /*
  * Synaptics RMI4 touchscreen driver
  *

@@ -825,6 +825,11 @@ int mmc_sd_get_cid(struct mmc_host *host, u32 ocr, u32 *cid, u32 *rocr)
 	if (!err)
 		ocr |= SD_OCR_CCS;
 
+	/*remove UHS-I mode of SD 3.0 because hardware do not support it.*/
+#ifdef CONFIG_HUAWEI_MMC
+	host->caps &= ~(MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+					MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_DDR50);
+#endif
 	/*
 	 * If the host supports one of UHS-I modes, request the card
 	 * to switch to 1.8V signaling level.

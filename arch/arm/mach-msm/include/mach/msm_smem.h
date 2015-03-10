@@ -124,6 +124,9 @@ enum {
 	SMEM_CLKREGIM_BSP,
 	SMEM_CLKREGIM_SOURCES,
 	SMEM_SMD_FIFO_BASE_ID,
+
+    /* delete SMEM_HUAWEI_DDRINFO, replace with SMEM_ID_VENDOR1 */
+
 	SMEM_USABLE_RAM_PARTITION_TABLE = SMEM_SMD_FIFO_BASE_ID +
 						SMEM_NUM_SMD_STREAM_CHANNELS,
 	SMEM_POWER_ON_STATUS_INFO,
@@ -161,6 +164,18 @@ enum {
 	SMEM_FLASH_NAND_DEV_INFO, /* 471 */
 	SMEM_NUM_ITEMS,
 };
+
+typedef struct
+{
+    unsigned int lpddrID;                  /* DDR ID */
+    unsigned int update_flag[2];           /* sd auto update flag */
+    unsigned char sb_seme_data[16];
+    /* add the huawei_debug to match the aboot & sbl */
+#ifdef CONFIG_HUAWEI_DEBUG_MODE    
+    unsigned int huawei_debug;
+#endif
+    unsigned int reserved;                  /* reserved for filling */
+}smem_exten_huawei_paramater;
 
 #ifdef CONFIG_MSM_SMD
 void *smem_alloc(unsigned id, unsigned size);

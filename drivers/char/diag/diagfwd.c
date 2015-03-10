@@ -811,13 +811,46 @@ void diag_read_smd_work_fn(struct work_struct *work)
 							diag_read_smd_work);
 	diag_smd_send_req(smd_info);
 }
+#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+static char log_msg_event[]=
+{
+	0x10, //16, DIAG_LOG_F
+	0x60, //96, DIAG_EVENT_REPORT_F
+	0x79, //121, DIAG_EXT_MSG_F
+	0x7e, //126, DIAG_EXT_MSG_TERSE_F
+	0x92, //146, DIAG_QSR_EXT_MSG_TERSE_F
+};
+#endif
 
 int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 {
 	int i, err = 0, index;
+#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+	int num, qxdmlog_type=0;
+#endif
 	index = 0;
+#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+	pr_debug("%s logging_mode=%d mixed_qmdlog_flag=%d buf=0x%x\n", __func__,
+	driver->logging_mode, driver->mixed_qmdlog_flag, *(char*)buf);
+	num = sizeof(log_msg_event)/sizeof(char);
+	if (driver->logging_mode == USB_MODE && driver->mixed_qmdlog_flag)
+	{
+		for (i=0; i<num; i++)
+		{
+			if (*(char*)buf == log_msg_event[i])
+			{
+				qxdmlog_type=1;
+				break;
+			}
+		}
+	}
+#endif
 
+#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+	if (driver->logging_mode == MEMORY_DEVICE_MODE || qxdmlog_type) {
+#else
 	if (driver->logging_mode == MEMORY_DEVICE_MODE) {
+#endif
 		if (data_type == APPS_DATA) {
 			for (i = 0; i < driver->buf_tbl_size; i++)
 				if (driver->buf_tbl[i].length == 0) {
@@ -865,10 +898,31 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 					 diag_bridge[index].write_len, index);
 		}
 #endif
+
+#ifdef CONFIG_HUAWEI_FEATURE_DIAG_MDLOG
+		for (i = 0; i < driver->num_clients; i++)
+		{
+			if (driver->mixed_qmdlog_flag)
+			{
+				if (driver->client_map[i].pid == driver->mixed_qmdlog_pid)
+				{
+					break;
+				}
+			}
+			else
+			{
+				if (driver->client_map[i].pid ==driver->logging_process_id)
+				{
+					break;
+				}
+			}
+		}
+#else
 		for (i = 0; i < driver->num_clients; i++)
 			if (driver->client_map[i].pid ==
 						 driver->logging_process_id)
 				break;
+#endif
 		if (i < driver->num_clients) {
 			pr_debug("diag: wake up logging process\n");
 			driver->data_ready[i] |= USER_SPACE_DATA_TYPE;
@@ -1262,6 +1316,21 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 						packet_type = 0;
 				}
 			}
+#ifdef CONFIG_HUAWEI_KERNEL
+			/* automation cmd_code is 0xF6 */
+			/* judge if it is automation cmd_code */
+			else if ((entry.cmd_code == 255) 
+					&& (entry.subsys_id == 0xF6) 
+					&& (cmd_code == 0xF6))
+			{
+				if ((entry.cmd_code_lo <= subsys_id) && (entry.cmd_code_hi >= subsys_id))
+				{
+					diag_send_data(entry, buf, len,data_type);
+					packet_type = 0;
+				}
+
+			}
+#endif
 		}
 	}
 #if defined(CONFIG_DIAG_OVER_USB)

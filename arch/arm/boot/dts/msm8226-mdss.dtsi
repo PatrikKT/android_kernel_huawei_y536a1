@@ -87,6 +87,7 @@
 		mdss_fb0: qcom,mdss_fb_primary {
 			cell-index = <0>;
 			compatible = "qcom,mdss-fb";
+			qcom,mdss-fb-splash-logo-enabled;
 			qcom,memory-reservation-type = "EBI1";
 			qcom,memory-reservation-size = <0x800000>;
 			qcom,memblock-reserve = <0x03200000 0xFA0000>;
@@ -97,7 +98,7 @@
 			compatible = "qcom,mdss-fb";
 		};
 	};
-
+	/* remove L15 config in LCD module */
 	mdss_dsi0: qcom,mdss_dsi@fd922800 {
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->0";
@@ -108,11 +109,16 @@
 		reg-names = "dsi_ctrl", "dsi_phy", "mmss_misc_phys";
 		qcom,mdss-fb-map = <&mdss_fb0>;
 		qcom,mdss-mdp = <&mdss_mdp>;
-		vdd-supply = <&pm8226_l15>;
+		vdd-supply = <&pm8226_l19>;
 		vddio-supply = <&pm8226_l8>;
 		vdda-supply = <&pm8226_l4>;
 		qcom,platform-reset-gpio = <&msmgpio 25 0>;
 		qcom,platform-te-gpio = <&msmgpio 24 0>;
+		/*for vsp/vsn IC,eanble gpio is vsp*/
+		qcom,platform-enable-gpio = <&msmgpio 23 0>;
+		/*for vsp/vsn IC,enable-gpio-vsn is vsn*/
+		qcom,platform-enable-gpio-vsn = <&msmgpio 110 0>;
+		qcom,bl-enable-gpio = <&msmgpio 22 0>;
 		qcom,platform-strength-ctrl = [ff 06];
 		qcom,platform-bist-ctrl = [00 00 b1 ff 00 00];
 		qcom,platform-regulator-settings = [07 09 03 00 20 00 01];
@@ -123,8 +129,8 @@
 			00 c0 00 00 00 00 00 01 bb];
 		qcom,platform-supply-entry1 {
 			qcom,supply-name = "vdd";
-			qcom,supply-min-voltage = <2800000>;
-			qcom,supply-max-voltage = <2800000>;
+			qcom,supply-min-voltage = <2850000>;
+			qcom,supply-max-voltage = <2850000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
 			qcom,supply-pre-on-sleep = <0>;
@@ -161,6 +167,12 @@
 		qcom,mdss_pan_res = <1280 720>;
 		qcom,mdss_pan_bpp = <24>;
 		qcom,mdss-fb-map = <&mdss_fb1>;
+	};
+	i2c3: i2c@f9925000 { /* BLSP-1 QUP-3 */
+		lcd_bias@3e {
+			compatible ="ti,lcd_bias"; /* Manufacturer, driver name */
+			reg = <0x3e>; /* Slave Addres */
+		};
 	};
 };
 

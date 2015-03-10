@@ -555,7 +555,11 @@ static const struct intr_data intr_tbl_v2[] = {
 	{WCD9XXX_IRQ_EAR_PA_OCPL_FAULT, false},
 	{WCD9XXX_IRQ_HPH_L_PA_STARTUP, false},
 	{WCD9XXX_IRQ_HPH_R_PA_STARTUP, false},
+/* EAR_PA_STARTUP is not used in huawei product and it is equal to MBHC_JACK_SWITCH,
+   delete it to solve double irq issue and removal detection failure */
+#ifndef CONFIG_HUAWEI_KERNEL
 	{WCD9320_IRQ_EAR_PA_STARTUP, false},
+#endif
 	{WCD9XXX_IRQ_RESERVED_0, false},
 	{WCD9XXX_IRQ_RESERVED_1, false},
 	{WCD9XXX_IRQ_MAD_AUDIO, false},
@@ -1254,6 +1258,11 @@ static int wcd9xxx_dt_parse_micbias_info(struct device *dev,
 				&prop_val)))
 		micbias->bias4_cfilt_sel = (u8)prop_val;
 
+	/* when codec driver start , these code will set mic's cap mode, 
+	 * for matching hardware, here will change the mode property setting code
+	 * so we can control it easily whether Qualcom modify it or not
+	 */
+#ifndef CONFIG_HUAWEI_KERNEL
 	/* micbias external cap */
 	micbias->bias1_cap_mode =
 	    (of_property_read_bool(dev->of_node, "qcom,cdc-micbias1-ext-cap") ?
@@ -1267,7 +1276,21 @@ static int wcd9xxx_dt_parse_micbias_info(struct device *dev,
 	micbias->bias4_cap_mode =
 	    (of_property_read_bool(dev->of_node, "qcom,cdc-micbias4-ext-cap") ?
 	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
-
+#else
+	/* micbias external cap */
+	micbias->bias1_cap_mode =
+	    (of_property_read_bool(dev->of_node, "huawei,cdc-micbias1-ext-cap") ?
+	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
+	micbias->bias2_cap_mode =
+	    (of_property_read_bool(dev->of_node, "huawei,cdc-micbias2-ext-cap") ?
+	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
+	micbias->bias3_cap_mode =
+	    (of_property_read_bool(dev->of_node, "huawei,cdc-micbias3-ext-cap") ?
+	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
+	micbias->bias4_cap_mode =
+	    (of_property_read_bool(dev->of_node, "huawei,cdc-micbias4-ext-cap") ?
+	     MICBIAS_EXT_BYP_CAP : MICBIAS_NO_EXT_BYP_CAP);
+#endif
 	micbias->bias2_is_headset_only =
 	    of_property_read_bool(dev->of_node,
 				  "qcom,cdc-micbias2-headset-only");

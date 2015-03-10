@@ -1,0 +1,98 @@
+/include/  "huawei-fac.dtsi"
+/include/  "huawei-lcd.dtsi"
+/include/  "huawei-sensors.dtsi"
+/include/  "huawei-wifi.dtsi"
+/include/  "huawei-bt.dtsi"
+/include/  "huawei-fm.dtsi"
+/include/  "huawei-audio.dtsi"
+/include/  "huawei-tp.dtsi"
+/include/  "huawei-camera.dtsi"
+/include/  "huawei-pm.dtsi"
+/include/  "huawei-bus.dtsi"
+/include/  "huawei-storage.dtsi"
+/include/  "huawei-usb.dtsi"
+/include/  "huawei-nfc.dtsi"
+/include/  "huawei-vibrator.dtsi"
+/include/  "huawei-tricolor-led.dtsi"
+/include/  "huawei-kpdbl.dtsi"
+/include/  "huawei-i2c-detect-va.dtsi"
+/include/  "huawei-sdcard.dtsi"
+/include/  "huawei-battery.dtsi"
+/include/  "huawei-gpio.dtsi"
+
+&pm8226_mpps {
+	mpp@a600 { /* MPP 7 */
+		/* PA_THERM1 config */
+		qcom,mode = <4>; /* AIN input */
+		qcom,invert = <1>; /* Enable MPP */
+		qcom,ain-route = <2>; /* AMUX 5 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
+	};
+};
+
+&pm8226_vadc {
+	pa_mpp_number = <0x16>;
+	//pa1_mpp_number = <0x16>;
+	cpu_mpp_number = <0x14>;
+	
+	chan@16 {
+		label = "pa_therm1";
+		reg = <0x16>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <8>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@14 {
+		qcom,scale-function = <0x8>;
+	};
+	
+	chan@17 {
+		label = "pa_therm_NA";
+	};	
+
+};
+
+&pm8226_adc_tm {
+	chan@14 {
+		label = "pa_therm0";
+		reg = <0x14>;
+		qcom,decimation = <0x0>;
+		qcom,pre-div-channel-scaling = <0x0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0x8>;
+		qcom,hw-settle-time = <0x2>;
+		qcom,fast-avg-setup = <0x0>;
+		qcom,btm-channel-number = <0x78>;
+		qcom,thermal-node;
+	};
+
+	chan@16 {
+		label = "pa_therm1";
+		reg = <0x16>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <8>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x7a>;
+		qcom,thermal-node;
+	};
+
+	chan@17 {
+		label = "pa_therm_NA";
+	};	
+
+};
+/ {
+        boardid_info {
+                  compatible = "huawei,hw_boardid_info";
+                  boardid = [01];
+                  status = "ok";
+        };
+};

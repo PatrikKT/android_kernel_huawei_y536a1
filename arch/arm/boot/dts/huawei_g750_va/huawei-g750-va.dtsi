@@ -1,0 +1,26 @@
+/include/  "huawei-g750-fac-va.dtsi"
+/include/  "huawei-g750-lcd-va.dtsi"
+/include/  "huawei-g750-sensors-va.dtsi"
+/include/  "huawei-g750-wifi-va.dtsi"
+/include/  "huawei-g750-bt-va.dtsi"
+/include/  "huawei-g750-fm-va.dtsi"
+/include/  "huawei-g750-audio-va.dtsi"
+/include/  "huawei-g750-tp-va.dtsi"
+/include/  "huawei-g750-camera-va.dtsi"
+/include/  "huawei-g750-pm-va.dtsi"
+/include/  "huawei-g750-bus-va.dtsi"
+/include/  "huawei-g750-storage-va.dtsi"
+/include/  "huawei-g750-kpdbl-va.dtsi"
+/include/  "huawei-g750-tricolor-led-va.dtsi"
+/include/  "huawei-g750-vibrator-va.dtsi"
+/include/  "huawei-g750-i2c-detect-va.dtsi"
+/include/  "huawei-g750-battery-va.dtsi"
+/include/  "huawei-usb.dtsi"
+
+/ {
+        boardid_info {
+                  compatible = "huawei,hw_boardid_info";
+                  boardid = [04];
+                  status = "ok";
+        };
+};

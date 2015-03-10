@@ -1273,7 +1273,11 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 		&buff_mgr_info);
 	if (rc < 0) {
 		rc = -EAGAIN;
+#ifdef CONFIG_HUAWEI_KERNEL_CAMERA
+		pr_err("%s:%d error getting buffer rc:%d\n", __func__,__LINE__,rc);
+#else
 		pr_debug("error getting buffer rc:%d\n", rc);
+#endif
 		goto ERROR2;
 	}
 	new_frame->output_buffer_info[0].index = buff_mgr_info.index;
@@ -1304,7 +1308,11 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 			&dup_buff_mgr_info);
 		if (rc < 0) {
 			rc = -EAGAIN;
+#ifdef CONFIG_HUAWEI_KERNEL_CAMERA
+			pr_err("%s:%d error getting buffer rc:%d\n", __func__,__LINE__,rc);
+#else
 			pr_debug("error getting buffer rc:%d\n", rc);
+#endif
 			goto ERROR3;
 		}
 		new_frame->output_buffer_info[1].index =
@@ -1371,6 +1379,9 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	if (rc) {
 		ERR_COPY_FROM_USER();
 		rc = -EINVAL;
+#ifdef CONFIG_HUAWEI_KERNEL_CAMERA
+		pr_err("%s: error cannot copy_to_user\n",__func__);
+#endif
 		goto ERROR4;
 	}
 	return rc;

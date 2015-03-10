@@ -43,6 +43,12 @@
 
 #include "ion_priv.h"
 
+
+#ifdef CONFIG_ION_CP_MM_LOG_CHECK
+#define ION_CP_MM_FILE_NAME		"/data/ion_cp_mm.log"
+#define ION_CP_MM_LOG_LEN		(128)
+#endif
+
 /**
  * struct ion_device - the metadata of the ion device node
  * @dev:		the actual misc device
@@ -450,6 +456,41 @@ static int ion_handle_add(struct ion_client *client, struct ion_handle *handle)
 	return 0;
 }
 
+/* write the log into the log file */
+#ifdef CONFIG_ION_CP_MM_LOG_CHECK
+static void temp_ion_cp_filewrite(char* filename, char* data)
+{
+
+	struct file *filp; 
+
+	mm_segment_t fs;
+
+	filp = filp_open(filename, O_CREAT | O_RDWR | O_APPEND, 0644);
+
+	if(IS_ERR(filp))
+    {
+
+      printk("open error...\n"); 
+
+      return;
+
+    }   
+
+
+    fs=get_fs();
+
+    set_fs(KERNEL_DS);
+
+    filp->f_op->write(filp, data, strlen(data),&filp->f_pos);
+
+    set_fs(fs);
+
+    filp_close(filp,NULL);
+
+}
+#endif
+
+
 struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 			     size_t align, unsigned int heap_id_mask,
 			     unsigned int flags)
@@ -463,6 +504,10 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 	const unsigned int MAX_DBG_STR_LEN = 64;
 	char dbg_str[MAX_DBG_STR_LEN];
 	unsigned int dbg_str_idx = 0;
+#ifdef CONFIG_ION_CP_MM_LOG_CHECK
+	char ion_cp_mm_log_str[ION_CP_MM_LOG_LEN];
+	ion_cp_mm_log_str[0] = '\0';
+#endif
 
 	dbg_str[0] = '\0';
 
@@ -476,6 +521,19 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 
 	pr_debug("%s: len %d align %d heap_id_mask %u flags %x\n", __func__,
 		 len, align, heap_id_mask, flags);
+
+    /* if alloc the cp_mm_heap, log it */
+#ifdef CONFIG_ION_CP_MM_LOG_CHECK
+	if ((1 << ION_CP_MM_HEAP_ID) & heap_id_mask)
+	{
+		if (client->name)
+			sprintf (ion_cp_mm_log_str, "%s want to alloc ion cp mm heap\n", client->name);
+		else
+			sprintf (ion_cp_mm_log_str, "%s want to alloc ion cp mm heap\n", "unknown");
+		temp_ion_cp_filewrite(ION_CP_MM_FILE_NAME, ion_cp_mm_log_str);
+	}
+#endif
+	
 	/*
 	 * traverse the list of heaps available in this system in priority
 	 * order.  If the heap type is supported by the client, and matches the

@@ -3053,4 +3053,32 @@ config KRAIT_REGULATOR
 	 line from the PMIC. This supply line is powered by multiple
 	 regulators running in ganged mode inside the PMIC. Enable
 	 this option to support such configurations.
+
+config HUAWEI_KERNEL
+	bool "Use huawei code"
+	default n
+	help
+	  use huawei code
+
+config HUAWEI_KERNEL_DEBUG
+	bool "Use Huawei kernel debug mode"
+	depends on HUAWEI_KERNEL
+	default n
+	help
+	  Enable sysrq, dump mode and some debug masks by default.
+
+config HUAWEI_DEBUG_MODE
+	bool "debug mode support"
+	depends on HUAWEI_KERNEL
+        default n
+	help
+	  in debug mode,you can use sysrq and dump mode 	 
+
+config HUAWEI_FEATURE_NFF
+	bool "save bootup log to sdcard if long power event"
+	depends on HUAWEI_KERNEL
+        default n
+	help
+	  in debug mode,you can use sysrq and dump mode 	 
+
 endif

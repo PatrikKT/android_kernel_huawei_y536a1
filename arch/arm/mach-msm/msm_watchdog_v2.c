@@ -27,6 +27,9 @@
 #include <linux/platform_device.h>
 #include <mach/scm.h>
 #include <mach/msm_memory_dump.h>
+#ifdef CONFIG_HUAWEI_KERNEL
+#include <mach/msm_iomap.h>
+#endif
 
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
@@ -40,6 +43,14 @@
 #define MASK_SIZE		32
 #define SCM_SET_REGSAVE_CMD	0x2
 #define SCM_SVC_SEC_WDOG_DIS	0x7
+#ifdef CONFIG_HUAWEI_KERNEL
+#define DIV_FACTOR_NS 1000000000             /* nsec and sec for conversion */
+#endif
+
+#ifdef CONFIG_HUAWEI_KERNEL
+#define APPS_WDT_BARK_MAGIC_NUM         (0xCBCBDEAD)
+#define APPS_WDT_BARK_MAGIC_NUM_ADDR    (MSM_IMEM_BASE + 0xB20)
+#endif
 
 static struct workqueue_struct *wdog_wq;
 
@@ -234,7 +245,9 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	unsigned long long time_ns;
 	unsigned long long slack_ns;
 	unsigned long long bark_time_ns = wdog_dd->bark_time * 1000000ULL;
-
+#ifdef CONFIG_HUAWEI_KERNEL
+	unsigned long nanosec_rem = 0;
+#endif
 	for (i = 0; i < 2; i++) {
 		count = (__raw_readl(wdog_dd->base + WDT0_STS) >> 1) & 0xFFFFF;
 		if (count != prev_count) {
@@ -251,6 +264,11 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	if (slack_ns < wdog_dd->min_slack_ns)
 		wdog_dd->min_slack_ns = slack_ns;
 	wdog_dd->last_pet = time_ns;
+#ifdef CONFIG_HUAWEI_KERNEL
+	nanosec_rem = do_div(wdog_dd->last_pet, DIV_FACTOR_NS);
+	printk(KERN_INFO "Watchdog pet at %lu.%06lu\n", (unsigned long)
+		wdog_dd->last_pet, nanosec_rem / 1000);
+#endif
 }
 
 static void keep_alive_response(void *info)
@@ -334,6 +352,9 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 	if (wdog_dd->do_ipi_ping)
 		dump_cpu_alive_mask(wdog_dd);
 	printk(KERN_INFO "Causing a watchdog bite!");
+#ifdef CONFIG_HUAWEI_KERNEL
+	__raw_writel(APPS_WDT_BARK_MAGIC_NUM, APPS_WDT_BARK_MAGIC_NUM_ADDR);
+#endif
 	__raw_writel(1, wdog_dd->base + WDT0_BITE_TIME);
 	mb();
 	__raw_writel(1, wdog_dd->base + WDT0_RST);
